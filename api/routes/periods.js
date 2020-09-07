@@ -1,6 +1,5 @@
 const appraisalPeriodsRouter = require('express').Router();
 const AppraisalService = require('../../services/AppraisalService');
-const middlewares = require('../middlewares');
 
 // Get users active periods
 appraisalPeriodsRouter.get('/', async (req, res, next) => {
