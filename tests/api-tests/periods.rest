@@ -1,0 +1,45 @@
+GET http://localhost:3001/api/periods
+
+###
+
+GET http://localhost:3001/api/periods/5f5380c278b737262c279fb9
+
+
+###
+
+POST http://localhost:3001/api/periods/5f5380c278b737262c279fb9/items
+Content-Type: application/json
+
+{
+  "type": "Planned",
+  "status": "Active",
+  "content": "test content rest",
+  "periodId": "5f5380c278b737262c279fb9"
+}
+
+
+###
+
+PUT http://localhost:3001/api/periods/5f5380c278b737262c279fb9/items/5f539f96f578ec1d3494171d
+Content-Type: application/json
+
+{
+  "content": "other content 32"
+}
+
+
+###
+
+DELETE http://localhost:3001/api/periods/5f5380c278b737262c279fb9/items/5f53a76d0efcb8ac7fec5475
+
+###
+
+POST http://localhost:3001/api/periods
+Content-Type: application/json
+
+{
+  "name": "test new period",
+  "status": "Active",
+  "organizationId": "5f537de4b32078165835d127",
+  "createdUser": "testuser"
+}
