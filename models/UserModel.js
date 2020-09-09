@@ -31,7 +31,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: false,
   }]
-});
+}, { autoCreate: true });
 
 UserSchema.set('toJSON', {
   transform: toJSON

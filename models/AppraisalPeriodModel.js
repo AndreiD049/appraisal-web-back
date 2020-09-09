@@ -41,7 +41,7 @@ const AppraisalPeriodSchema = new mongoose.Schema({
     required: true,
     default: Date.now
   }
-});
+}, { autoCreate: true });
 
 AppraisalPeriodSchema.set('toJSON', {
   transform: toJSON

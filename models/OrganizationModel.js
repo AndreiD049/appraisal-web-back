@@ -16,7 +16,7 @@ const OrganizationSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
-});
+}, { autoCreate: true });
 
 OrganizationSchema.set('toJSON', {
   transform: toJSON
