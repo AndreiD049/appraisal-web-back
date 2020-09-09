@@ -64,7 +64,7 @@ const AppraisalItemSchema = new mongoose.Schema({
     required: true,
     default: Date.now
   }
-});
+}, { autoCreate: true });
 
 AppraisalItemSchema.set('toJSON', {
   transform: toJSON
