@@ -6,14 +6,7 @@ appraisalPeriodsRouter.get('/', async (req, res, next) => {
   try {
     const periods = await AppraisalService.getPeriodsOverview(req.user);
     // Return only necessary information
-    res.json(periods.map(p => ({
-      name: p.name,
-      status: p.status,
-      organizationId: p.organizationId,
-      id: p.id,
-      createdDate: p.createdDate,
-      createdUser: p.createdUser
-    })));
+    res.json(periods.map(p => AppraisalService.periodJSON(p)));
   } catch (err) {
     next(err);
   }
@@ -51,7 +44,14 @@ appraisalPeriodsRouter.get('/:id', async (req, res, next) => {
 // Finish period and all it's items for the current user
 appraisalPeriodsRouter.post('/:id/finish', async (req, res, next) => {
   try {
-    console.log('finished');
+    const periodId = req.params['id'];
+    const result = await AppraisalService.finishPeriod(periodId, req.user);
+    console.log(result);
+    if (!result) {
+      res.status(400).end();
+    } else {
+      res.status(200).end();
+    }
   } catch (err) {
     next(err);
   }

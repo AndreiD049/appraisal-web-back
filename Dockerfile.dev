@@ -1,0 +1,7 @@
+FROM node:current-slim
+
+WORKDIR /urs/src/appraisal-back
+
+EXPOSE 3001
+
+CMD ["npx", "nodemon", "index.js"]

@@ -23,6 +23,10 @@ const AppraisalPeriodSchema = new mongoose.Schema({
     type: String,
     default: []
   }],
+  usersFinished: [{
+    type: String,
+    default: []
+  }],
   modifiedUser: {
     type: String,
     required: false,

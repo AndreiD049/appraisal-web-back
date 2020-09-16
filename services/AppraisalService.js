@@ -7,7 +7,7 @@ const AppraisalService = {
       return null;
     /* 
      * Get all periods that are:
-     *    1. Finished and user is a prat of them
+     *    1. Finished and user is a part of them
      *    2. Active and have the same OrganizationId as one of the user's organizations
      */ 
     let docs = await AppraisalPeriodModel.find().or([
@@ -15,6 +15,20 @@ const AppraisalService = {
       { status: "Active", organizationId: { $in: user.organizations } }
     ]);
     return docs.map(el => el.toJSON())
+  },
+
+  // Logic specific to period JSON
+  periodJSON: function(period, userId) {
+    if (period.usersFinished.indexOf(userId) !== -1)
+      period.status = 'Finished'
+    return ({
+      name: period.name,
+      status: period.status,
+      organizationId: period.organizationId,
+      id: period.id,
+      createdDate: period.createdDate,
+      createdUser: period.createdUser
+    });
   },
 
   getPeriodById: async function(id) {
@@ -101,6 +115,42 @@ const AppraisalService = {
       throw new Error('Finished period items cannot be deleted');
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted.toJSON();
+  },
+
+  finishItem: async function(item) {
+    const itemDb = await AppraisalItemModel.findById(item.id).exec();
+    if (['Finished', 'InProgress'].indexOf(itemDb.status) !== -1) 
+      throw new Error(`Item '${itemDb.content}' is already finished`);
+    // if item type is Planned, change the status to InProgress
+    if (itemDb.type === 'Planned') {
+      itemDb.status = 'InProgress';
+    } else {
+      itemDb.status = 'Finished';
+    }
+    itemDb.save();
+  },
+
+  finishPeriod: async function(periodId, user) {
+    console.log(periodId);
+    const period = await AppraisalPeriodModel.findById(periodId);
+    if (!period)
+      throw new Error('Period was not found');
+    if (period.status === 'Finished')
+      throw new Error('Period is already finished');
+    if (!user || !user.id)
+      throw new Error("User is no logged in");
+    if (period.usersFinished.indexOf(user.id) !== -1)
+      throw new Error("User already finished this period");
+    // Get all the items for this user and period
+    const items = await this.getItemsByPeriodId(periodId, user);
+    // We need to change the item status accordingly
+    items.forEach(async (item) => {
+      await this.finishItem(item);
+    });
+    // Next, we need to add current user id to the period usersFinished
+    period.usersFinished.push(user.id);
+    period.save();
+    return true;
   }
 };
 
