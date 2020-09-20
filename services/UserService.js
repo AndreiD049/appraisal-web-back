@@ -8,6 +8,24 @@ const UserService = {
     return await (await UserModel.findById("testuser")).toJSON();
   },
 
+  getUser: async (id) => {
+    let user = await UserModel.findById(id);
+    return user === null ? null : user.toJSON();
+  },
+
+  getUserDoc: async (id) => {
+    let user = await UserModel.findById(id);
+    return user === null ? null : user;
+  },
+
+  addDefaultUser: async (id) => {
+    let newUser = new UserModel({
+      _id: id,
+      securityLevel: 1
+    });
+    return await (await newUser.save()).toJSON();
+  },
+
   getCurrentUserOrganizations: async (user) => {
     const organizations = await OrganizationModel.find({
       _id: { $in: user.organizations }

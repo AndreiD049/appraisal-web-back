@@ -62,6 +62,7 @@ const AppraisalService = {
    *  Validation rules:
    *    1. I cannot insert the item if the period has status Finished
    *    2. I cannot insert the item if the body is not valid
+   *    3. I cannot insert an item of Training Suggested for myself
    */ 
   addItemToPeriod: async function (periodId, item, user) {
     if (!user.id)
@@ -71,6 +72,10 @@ const AppraisalService = {
       throw new Error('Item has invalid Period id');
     if (period.status === 'Finished')
       throw new Error('Period is already finished');
+    if (period.usersFinished && period.usersFinished.indexOf(user.id) !== -1)
+      throw new Error('Period is already finished');
+    if (item.type === 'Training_Suggested' && item.user === user.id) 
+      throw new Error('You cannot add an \'Suggested Training\' item of yourself');
     const model = new AppraisalItemModel({
       type: item.type,
       status: item.status,
@@ -104,8 +109,9 @@ const AppraisalService = {
    * Validation:
    * 1. I cannot delete an item that is already finished
    * 2. I cannot delete an item whose period is already finished
+   * 3. I cannot delete an Training suggested item of myself
    */
-  deleteItem: async function(itemId) {
+  deleteItem: async function(itemId, user) {
     const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
     const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
     if (item.status === 'Finished')
@@ -113,6 +119,11 @@ const AppraisalService = {
     // Check period finished
     if (period.status === 'Finished')
       throw new Error('Finished period items cannot be deleted');
+    if (period.usersFinished && period.usersFinished.indexOf(user.id) !== -1)
+      throw new Error('Finished period items cannot be deleted');
+    // if type Training_suggested, check if you can delete it
+    if (item.type === 'Training_Suggested' && item.user === user.id) 
+      throw new Error('You cannot delete an \'Suggested Training\' item of yourself');
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted.toJSON();
   },

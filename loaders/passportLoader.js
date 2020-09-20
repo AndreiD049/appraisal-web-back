@@ -1,0 +1,82 @@
+const passport = require('passport');
+const {OIDCStrategy} = require('passport-azure-ad');
+const session = require('express-session');
+const MongoStore = require('connect-mongo')(session);
+const mongoose = require('mongoose');
+const config = require('../config');
+const UserService = require('../services/UserService');
+const UserModel = require('../models/UserModel');
+
+const init = async ({app}) => {
+  app.store = new MongoStore({
+    mongooseConnection: mongoose.connection,
+    ttl: 5 * 24 * 60 * 60
+  })
+
+  app.use(session({
+    secret: config.creds.clientSecret,
+    resave: true,
+    saveUninitialized: false,
+    store: app.store,
+    cookie: {
+      maxAge: 5 * 24 * 60 * 60 * 1000,
+    }
+  }))
+
+  passport.serializeUser(function(user, done) {
+    done(null, user.oid);
+  });
+
+  passport.deserializeUser(function(oid, done) {
+    app.store.get(oid, async (err, session) => {
+      if (err) {
+        done(err, null);
+      }
+      done(null, session);
+    });
+  });
+
+  passport.use(new OIDCStrategy({
+    identityMetadata: config.creds.identityMetadata,
+    clientID: config.creds.clientID,
+    responseType: config.creds.responseType,
+    responseMode: config.creds.responseMode,
+    redirectUrl: config.creds.redirectUrl,
+    allowHttpForRedirectUrl: true,
+    clientSecret: config.creds.clientSecret,
+    passReqToCallback: false,
+    validateIssuer: true,
+    isB2C: false,
+    issuer: null,
+    scope: ['profile'],
+    useCookieInsteadOfSession: false,
+    loggingLevel: 'debug',
+    nonceLifetime: null,
+    nonceMaxAmount: 5,
+    clockSkew: null
+  }, 
+  async function(iss, sub, profile, accessToken, refreshToken, done) {
+    if (!profile.oid) {
+      return done(new Error("No oid found"), null);
+    }
+    // before attaching it to the req, add the info from mongo db
+    let dbUser = await UserService.getUser(profile._json.preferred_username);
+    if (dbUser === null) {
+      // Add the user to the DB
+      dbUser = await UserService.addDefaultUser(profile._json.preferred_username);
+    }
+    let sessionUser = {...profile, ...dbUser};
+    process.nextTick(function () {
+      app.store.set(profile.oid, sessionUser, (err) => {
+        if (err) {
+          return done(err, null);
+        }
+        return done(null, sessionUser);
+      })
+    });
+  }));
+  app.use(passport.initialize());
+  app.use(passport.session());
+}
+
+module.exports = { init }

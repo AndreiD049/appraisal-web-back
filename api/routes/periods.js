@@ -6,7 +6,7 @@ appraisalPeriodsRouter.get('/', async (req, res, next) => {
   try {
     const periods = await AppraisalService.getPeriodsOverview(req.user);
     // Return only necessary information
-    res.json(periods.map(p => AppraisalService.periodJSON(p)));
+    res.json(periods.map(p => AppraisalService.periodJSON(p, req.user.id)));
   } catch (err) {
     next(err);
   }
@@ -28,8 +28,7 @@ appraisalPeriodsRouter.get('/:id', async (req, res, next) => {
   try {
     const periodId = req.params["id"];
     // Get the period with current id
-    const period = await AppraisalService.getPeriodById(periodId);
-    delete period.users;
+    const period = AppraisalService.periodJSON(await AppraisalService.getPeriodById(periodId), req.user.id);
 
     // Only get items of current user
     const items = await AppraisalService.getItemsByPeriodId(periodId, req.user);
@@ -118,7 +117,7 @@ appraisalPeriodsRouter.delete('/:periodId/items/:id', async (req, res, next) => 
   {
     const itemId = req.params['id'];
     // Delete item and return the deleted item
-    await AppraisalService.deleteItem(itemId);
+    await AppraisalService.deleteItem(itemId, req.user);
     res.status(204).end();
   } catch (err) {
     next(err);

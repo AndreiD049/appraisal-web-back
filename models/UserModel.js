@@ -6,7 +6,7 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
     minlength: 6,
-    maxlength: 30,
+    maxlength: 50,
     match: /[a-zA-Z1-9]+/,
   },
   fullname: {
