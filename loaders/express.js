@@ -1,11 +1,10 @@
-const express = require('express');
 const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const morgan = require('morgan');
 const meRouter = require('../api/routes/me');
 const appraisalPeriodsRouter = require('../api/routes/periods');
 const userRouter = require('../api/routes/user');
-const middlewares = require('../api/middlewares');
 
 const init = async ({ app }) => {
   app.use(morgan('tiny'));
@@ -15,9 +14,14 @@ const init = async ({ app }) => {
   });
 
   app.use(cors());
-  app.use(bodyParser.json());
 
-  app.use(middlewares.attachCurrentUser);
+  app.all('/*', function(req, res, next) {
+      res.header("Access-Control-Allow-Origin", "*");
+      next();
+  });
+  app.use(bodyParser.urlencoded({ extended : true }));
+  app.use(bodyParser.json());
+  app.use(cookieParser());
 
   app.use('/api', meRouter);
   app.use('/api/periods', appraisalPeriodsRouter);

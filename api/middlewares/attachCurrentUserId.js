@@ -2,10 +2,12 @@ const UserService = require('../../services/UserService');
 
 const attachCurrentUser = async (req, res, next) => {
   try {
-    req.user = await UserService.getCurrentUser();
+    if (req.user) {
+      req.user.id = req.user._json.preferred_username;
+    }
     return next();
   } catch (e) {
-    console.error(`Error attaching user to the request: ${e}`);
+    console.error(`Error attaching user id to the request: ${e}`);
     return next(e);
   }
 };

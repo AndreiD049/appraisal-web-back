@@ -1,4 +1,4 @@
-const attachCurrentUser = require('./attachCurrentUser');
+const attachCurrentUser = require('./attachCurrentUserId');
 
 module.exports = {
   attachCurrentUser

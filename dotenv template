@@ -1,0 +1,13 @@
+PORT=<Port>
+MONGODB_URI=<connection_string>
+identityMetadata=https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
+clientID=<client_id>
+responseType=id_token
+responseMode=form_post
+redirectUrl=<redirect_url>
+allowHttpForRedirectUrl=true
+clientSecret=<secret>
+validateIssuer=false
+passReqToCallback=true
+tenantId=<tenant_id>
+destroySessionUrl=https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=<redirect_url>
