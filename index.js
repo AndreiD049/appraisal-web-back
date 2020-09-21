@@ -4,6 +4,7 @@ const express = require('express');
 
 async function startServer() {
   const app = express();
+  app.set('trust proxy', true);
 
   await loaders.init({ expressApp: app });
 
