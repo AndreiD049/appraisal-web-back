@@ -15,6 +15,7 @@ module.exports = {
     validateIssuer: process.env.validateIssuer,
     passReqToCallback: process.env.passReqToCallback,
     tenantId: process.env.tenantId,
-    destroySessionUrl: process.env.destroySessionUrl
+    destroySessionUrl: process.env.destroySessionUrl,
+    issuer: process.env.issuer.split(',')
   }
 }

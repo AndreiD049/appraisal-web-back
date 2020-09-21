@@ -29,8 +29,7 @@ meRouter.get('/login', function(req, res, next) {
   passport.authenticate('azuread-openidconnect', {
     response: res,
     failureRedirect: '/login',
-    state: 'login',
-    tenantIdOrName: config.creds.tenantId,
+    // customState: 'login',
   })(req, res, next);
 },
 (req, res, next) => {
@@ -47,9 +46,8 @@ meRouter.post('/auth/openid/return',
   function(req, res, next) {
     passport.authenticate('azuread-openidconnect', 
       { 
-        response: res,                      
+        response: res,
         failureRedirect: '/login',
-        tenantIdOrName: config.creds.tenantId
       }
     )(req, res, next);
   },

@@ -5,7 +5,6 @@ const MongoStore = require('connect-mongo')(session);
 const mongoose = require('mongoose');
 const config = require('../config');
 const UserService = require('../services/UserService');
-const UserModel = require('../models/UserModel');
 
 const init = async ({app}) => {
   app.store = new MongoStore({
@@ -36,6 +35,7 @@ const init = async ({app}) => {
     });
   });
 
+  console.log(config);
   passport.use(new OIDCStrategy({
     identityMetadata: config.creds.identityMetadata,
     clientID: config.creds.clientID,
@@ -47,7 +47,7 @@ const init = async ({app}) => {
     passReqToCallback: false,
     validateIssuer: true,
     isB2C: false,
-    issuer: null,
+    issuer: config.creds.issuer,
     scope: ['profile'],
     useCookieInsteadOfSession: false,
     loggingLevel: 'debug',
