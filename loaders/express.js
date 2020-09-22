@@ -1,5 +1,4 @@
 const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const morgan = require('morgan');
 const meRouter = require('../api/routes/me');
@@ -21,7 +20,6 @@ const init = async ({ app }) => {
   });
   app.use(bodyParser.urlencoded({ extended : true }));
   app.use(bodyParser.json());
-  app.use(cookieParser());
 
   app.use('/api', meRouter);
   app.use('/api/periods', appraisalPeriodsRouter);
