@@ -18,6 +18,7 @@ const init = async ({app}) => {
     saveUninitialized: false,
     store: app.store,
     cookie: {
+      sameSite: false,
       maxAge: 5 * 24 * 60 * 60 * 1000,
       domain: config.creds.domain
     }

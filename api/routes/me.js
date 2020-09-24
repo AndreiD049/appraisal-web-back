@@ -29,7 +29,6 @@ meRouter.get('/login', function(req, res, next) {
   passport.authenticate('azuread-openidconnect', {
     response: res,
     failureRedirect: '/login',
-    // customState: 'login',
   })(req, res, next);
 },
 (req, res, next) => {
