@@ -11,4 +11,4 @@ validateIssuer=false
 passReqToCallback=true
 tenantId=<tenant_id>
 destroySessionUrl=https://login.microsoftonline.com/common/oauth2/logout?post_logout_redirect_uri=<redirect_url>
-domain=admin-tc.xyz
+domain=

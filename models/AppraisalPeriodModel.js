@@ -51,6 +51,16 @@ AppraisalPeriodSchema.set('toJSON', {
   transform: toJSON
 });
 
+/*
+ * Other instance methods
+ */
+AppraisalPeriodSchema.methods.calculateStatus = function(user) {
+  if (this.usersFinished.indexOf(user.id) !== -1) {
+    this.status = 'Finished';
+  }
+  return this;
+}
+
 const AppraisalPeriodModel = mongoose.model('AppraisalPeriod', AppraisalPeriodSchema);
 
 module.exports = AppraisalPeriodModel;
