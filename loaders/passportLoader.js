@@ -37,7 +37,6 @@ const init = async ({app}) => {
     });
   });
 
-  console.log(config);
   passport.use(new OIDCStrategy({
     identityMetadata: config.creds.identityMetadata,
     clientID: config.creds.clientID,
@@ -67,6 +66,7 @@ const init = async ({app}) => {
       // Add the user to the DB
       dbUser = await UserService.addDefaultUser(profile._json.preferred_username);
     }
+    dbUser = dbUser.toJSON();
     let sessionUser = {...profile, ...dbUser};
     process.nextTick(function () {
       app.store.set(profile.oid, sessionUser, (err) => {
