@@ -22,7 +22,7 @@ userRouter.get('/organizations', async( req, res, next) => {
 userRouter.get('/team-members', async (req, res, next) => {
   try {
     const members = await UserService.getCurrentUserTeamMembers(req.user);
-    res.json(members.map(member => member.id));
+    res.json(members.map(member => member));
   } catch (err) {
     next(err);
   }
