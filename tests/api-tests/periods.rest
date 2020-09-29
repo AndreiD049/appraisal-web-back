@@ -43,3 +43,7 @@ Content-Type: application/json
   "organizationId": "5f537de4b32078165835d127",
   "createdUser": "testuser"
 }
+
+###
+
+POST http://localhost:3002/api/periods/5f6ccc5979667704d333c5d7/finish

@@ -10,6 +10,27 @@ userRouter.use(async (req, res, next) => {
   next();
 });
 
+/* 
+    I want to be able to get other user's info. But i cannot do that
+  if the user is not on my team.
+*/
+userRouter.get('/user/:id', async (req, res, next) => {
+  try {
+    const id = req.params['id'];
+    // Check if we are logged in
+    if (!req.user)
+      throw new Error('No user attached to the requst');
+    // Check if the user in question is my team-member
+    if (!(await UserService.isTeamMember(req.user, id)))
+      throw new Error(`Cannot get user info. ${id} is not on your team`);
+    // Fetch user's info from the database and return it
+    const data = await UserService.getUser(id);
+    res.json(data);
+  } catch (err) {
+    next(err);
+  }
+});
+
 userRouter.get('/organizations', async( req, res, next) => {
   try {
     organizations = await UserService.getCurrentUserOrganizations(req.user);
