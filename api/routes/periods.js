@@ -29,7 +29,7 @@ appraisalPeriodsRouter.post('/', async(req, res, next) => {
 appraisalPeriodsRouter.get('/:id', async (req, res, next) => {
   try {
     const periodId = req.params["id"];
-    // Get the period with current id
+
     const period = (await AppraisalService.getPeriodById(periodId)).calculateStatus(req.user).toJSON();
 
     // Only get items of current user
@@ -107,7 +107,7 @@ appraisalPeriodsRouter.put('/:periodId/items/:id', async (req, res, next) => {
 
     // Validate request
     if (!body.content && !body.type && !body.status)
-      next(new Error('No items found to update: Content or type or status.'))
+      throw new Error('No items found to update: Content or type or status.');
     else if (body.periodId !== periodId)
       throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
     
@@ -155,6 +155,31 @@ appraisalPeriodsRouter.post('/:id/users/add-user', async (req, res, next) => {
     next(err);
   }
 });
+
+appraisalPeriodsRouter.get('/:periodId/users/:userId', async (req, res, next) => {
+  try {
+    const periodId = req.params['periodId'];
+    const userId = req.params['userId'];
+
+    // make sure we are allowed to get this users details
+    if (!(await UserService.isTeamMember(req.user, userId)))
+      throw new Error(`Cannot get user details. '${userId}' is not on your team`);
+
+    const user = await UserService.getUser(userId);
+    if (user === null)
+      throw new Error(`User '${userId}' was not found`);
+
+    const period = (await AppraisalService.getPeriodById(periodId)).calculateStatus(user).toJSON();
+
+    // Only get items of user
+    const items = (await AppraisalService.getItemsByPeriodId(periodId, user))
+      .map(item => item.toJSON());
+    period.items = items;
+    res.json(period);
+  } catch (err) {
+    next(err);
+  }
+}),
 
 appraisalPeriodsRouter.get('/:periodId/users/:userId/items', async (req, res, next) => {
   try {

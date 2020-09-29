@@ -115,6 +115,8 @@ const AppraisalService = {
     // Check period finished
     if (period.status === 'Finished')
       throw new Error('Finished period items cannot be updated');
+    if (item.type === 'Training_Suggested') 
+      throw new Error('You cannot update an \'Suggested Training\' item of yourself');
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, {new: true}).exec();
     return updated;
   },
