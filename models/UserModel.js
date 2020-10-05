@@ -28,8 +28,9 @@ const UserSchema = new mongoose.Schema({
     required: true,
   },
   organizations: [{
-    type: String,
+    type: mongoose.Types.ObjectId,
     required: false,
+    ref: 'Organization'
   }]
 }, { autoCreate: true });
 
