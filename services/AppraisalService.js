@@ -2,6 +2,7 @@ const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
 const AppraisalItemModel = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
+const { Types } = require('mongoose');
 
 const AppraisalService = {
   getPeriodsOverview: async function(user) {
@@ -12,9 +13,12 @@ const AppraisalService = {
      *    1. Finished and user is a part of them
      *    2. Active and have the same OrganizationId as one of the user's organizations
      */ 
+    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
+      user.organizations :
+      user.organizations.map(o => o.id);
     let docs = await AppraisalPeriodModel.find().or([
       { "users": user.id, status: "Finished" },
-      { status: "Active", organizationId: { $in: user.organizations } }
+      { status: "Active", organizationId: { $in: organizations } }
     ]);
     return docs.map(el => el.calculateStatus(user))
   },

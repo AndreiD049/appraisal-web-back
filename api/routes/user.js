@@ -10,6 +10,21 @@ userRouter.use(async (req, res, next) => {
   next();
 });
 
+/**
+ * Endpoint for getting Users whose:
+ * 1. Security Level is lower than mine
+ * 2. Don't have a organization
+ */
+userRouter.get('/', async(req, res, next) => {
+  try {
+    const users = await UserService.getUserOrganizationUsers(req.user);
+    const newcomers = await UserService.getNewcomers();
+    res.json(users.concat(newcomers));
+  } catch (err) {
+    next(err);
+  }
+});
+
 /* 
     I want to be able to get other user's info. But i cannot do that
   if the user is not on my team.
@@ -48,6 +63,7 @@ userRouter.get('/team-members', async (req, res, next) => {
     next(err);
   }
 });
+
 
 module.exports = userRouter;
 

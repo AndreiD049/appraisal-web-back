@@ -1,9 +1,10 @@
 const UserModel = require('../models/UserModel');
 const OrganizationModel = require('../models/OrganizationModel');
+const { Types } = require('mongoose');
 
 const UserService = {
   getUser: async (id) => {
-    let user = await UserModel.findById(id);
+    let user = await UserModel.findById(id).populate('organizations');
     return user;
   },
 
@@ -17,10 +18,13 @@ const UserService = {
   },
 
   getCurrentUserOrganizations: async (user) => {
-    const organizations = await OrganizationModel.find({
-      _id: { $in: user.organizations }
+    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
+      user.organizations :
+      user.organizations.map(o => o.id);
+    const result = await OrganizationModel.find({
+      _id: { $in: organizations }
     });
-    return organizations;
+    return result;
   },
 
   /*
@@ -29,16 +33,50 @@ const UserService = {
    *    2. Users that have securityLevel lower than the user
    */
   getCurrentUserTeamMembers: async function(user) {
+    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
+      user.organizations :
+      user.organizations.map(o => o.id);
     const members = await UserModel.find(
       {
         $and: [
           { securityLevel: { $lt: user.securityLevel } },
           { teams: { $in: user.teams } },
-          { organizations: { $in: user.organizations } }
+          { organizations: { $in: organizations } }
         ]
       }
     );
     return members;
+  },
+
+  /**
+   * I want to be able to get all the users from my organization that have the securityLevel lower than me
+   * + i want to include myself here
+   */
+  getUserOrganizationUsers: async function(user) {
+    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
+      user.organizations :
+      user.organizations.map(o => o.id);
+    const users = await UserModel.find(
+      {
+        $or: [
+          { _id: user.id },
+          { $and: [
+            { securityLevel: { $lt: user.securityLevel } },
+            { organizations: { $in: organizations } }
+          ]}
+        ]
+      }).populate('organizations');
+    return users || [];
+  },
+
+  /**
+   * I want to be able to get all the users without any organization
+   */
+  getNewcomers: async function() {
+    const users = await UserModel.find(
+      { organizations: { $exists: true, $eq: [] }, 
+    });
+    return users || [];
   },
 
   /*
@@ -48,12 +86,15 @@ const UserService = {
    *  3. And if he is in at least one of my organizations
    */
   isTeamMember: async function(curentUser, memberId) {
+    const organizations = curentUser.organizations.every(o => Types.ObjectId.isValid(o)) ? 
+      curentUser.organizations :
+      curentUser.organizations.map(o => o.id);
     const user = await UserModel.find({
       $and: [
         { _id: memberId },
         { securityLevel: { $lt: curentUser.securityLevel } },
         { teams: { $in: curentUser.teams } },
-        { organizations: { $in: curentUser.organizations } }
+        { organizations: { $in: organizations } }
       ]
     });
     return user.length !== 0;
