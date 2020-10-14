@@ -16,21 +16,22 @@ const UserSchema = new mongoose.Schema({
     maxlength: 30,
     match: /[a-zA-Z1-9]+/,
   },
-  teams: [{
-    type: String,
-    required: false,
-    minlength: 3,
-    maxlength: 30,
-    match: /[a-zA-Z1-9]+/,
-  }],
   securityLevel: {
     type: Number,
     required: true,
   },
+  teams: [{
+    type: mongoose.Types.ObjectId,
+    required: false,
+    minlength: 3,
+    maxlength: 30,
+    match: /[a-zA-Z1-9]+/,
+    ref: 'Team',
+  }],
   organizations: [{
     type: mongoose.Types.ObjectId,
     required: false,
-    ref: 'Organization'
+    ref: 'Organization',
   }]
 }, { autoCreate: true });
 
