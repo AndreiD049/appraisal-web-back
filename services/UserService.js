@@ -1,13 +1,11 @@
 const UserModel = require('../models/UserModel');
 const OrganizationModel = require('../models/OrganizationModel');
-const { Types } = require('mongoose');
 
 const UserService = {
   getUser: async (id) => {
     let user = await UserModel.findById(id).populate('organizations');
     return user;
   },
-
 
   addDefaultUser: async (id) => {
     let newUser = new UserModel({
@@ -18,11 +16,9 @@ const UserService = {
   },
 
   getCurrentUserOrganizations: async (user) => {
-    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
-      user.organizations :
-      user.organizations.map(o => o.id);
+    const dbUser = await UserModel.findById(user.id);
     const result = await OrganizationModel.find({
-      _id: { $in: organizations }
+      _id: { $in: dbUser.organizations }
     });
     return result;
   },
@@ -33,15 +29,13 @@ const UserService = {
    *    2. Users that have securityLevel lower than the user
    */
   getCurrentUserTeamMembers: async function(user) {
-    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
-      user.organizations :
-      user.organizations.map(o => o.id);
+    const dbUser = await UserModel.findById(user.id);
     const members = await UserModel.find(
       {
         $and: [
-          { securityLevel: { $lt: user.securityLevel } },
-          { teams: { $in: user.teams } },
-          { organizations: { $in: organizations } }
+          { securityLevel: { $lt: dbUser.securityLevel } },
+          { teams: { $in: dbUser.teams } },
+          { organizations: { $in: dbUser.organizations } }
         ]
       }
     );
@@ -53,19 +47,17 @@ const UserService = {
    * + i want to include myself here
    */
   getUserOrganizationUsers: async function(user) {
-    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
-      user.organizations :
-      user.organizations.map(o => o.id);
+    const dbUser = await UserModel.findById(user.id);
     const users = await UserModel.find(
       {
         $or: [
-          { _id: user.id },
+          { _id: dbUser.id },
           { $and: [
-            { securityLevel: { $lt: user.securityLevel } },
-            { organizations: { $in: organizations } }
+            { securityLevel: { $lt: dbUser.securityLevel } },
+            { organizations: { $in: dbUser.organizations } }
           ]}
         ]
-      }).populate('organizations');
+      }).populate('organizations').populate('teams');
     return users || [];
   },
 
@@ -75,7 +67,7 @@ const UserService = {
   getNewcomers: async function() {
     const users = await UserModel.find(
       { organizations: { $exists: true, $eq: [] }, 
-    });
+    }).populate('teams');
     return users || [];
   },
 
@@ -86,15 +78,13 @@ const UserService = {
    *  3. And if he is in at least one of my organizations
    */
   isTeamMember: async function(curentUser, memberId) {
-    const organizations = curentUser.organizations.every(o => Types.ObjectId.isValid(o)) ? 
-      curentUser.organizations :
-      curentUser.organizations.map(o => o.id);
+    const dbUser = await UserModel.findById(curentUser.id);
     const user = await UserModel.find({
       $and: [
         { _id: memberId },
-        { securityLevel: { $lt: curentUser.securityLevel } },
-        { teams: { $in: curentUser.teams } },
-        { organizations: { $in: organizations } }
+        { securityLevel: { $lt: dbUser.securityLevel } },
+        { teams: { $in: dbUser.teams } },
+        { organizations: { $in: dbUser.organizations } }
       ]
     });
     return user.length !== 0;

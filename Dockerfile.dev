@@ -1,5 +1,7 @@
 FROM node:current-slim
 WORKDIR /urs/src/appraisal-back
+ADD package.json .
+ADD package-lock.json .
 RUN npm install
 EXPOSE 3001
 CMD ["npx", "nodemon", "index.js"]

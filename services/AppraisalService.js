@@ -13,14 +13,12 @@ const AppraisalService = {
      *    1. Finished and user is a part of them
      *    2. Active and have the same OrganizationId as one of the user's organizations
      */ 
-    const organizations = user.organizations.every(o => Types.ObjectId.isValid(o)) ? 
-      user.organizations :
-      user.organizations.map(o => o.id);
+    const dbUser = await UserModel.findById(user.id);
     let docs = await AppraisalPeriodModel.find().or([
-      { "users": user.id, status: "Finished" },
-      { status: "Active", organizationId: { $in: organizations } }
+      { "dbUsers": dbUser.id, status: "Finished" },
+      { status: "Active", organizationId: { $in: dbUser.organizations } }
     ]);
-    return docs.map(el => el.calculateStatus(user))
+    return docs.map(el => el.calculateStatus(dbUser))
   },
 
   getPeriodById: async function(id) {
