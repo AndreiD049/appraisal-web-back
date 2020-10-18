@@ -9,13 +9,22 @@ const OrganizationSchema = new mongoose.Schema({
     maxlength: 30,
   },
   createdUser: {
-    type: String,
+    type: mongoose.Types.ObjectId,
     required: true,
+    ref: 'User',
   },
   createdDate: {
     type: Date,
     default: Date.now
-  }
+  },
+  modifiedUser: {
+    type: mongoose.Types.ObjectId,
+    required: false,
+  },
+  modifiedDate: {
+    type: Date,
+    default: Date.now
+  },
 }, { autoCreate: true });
 
 OrganizationSchema.set('toJSON', {

@@ -1,13 +1,18 @@
 const mongoose = require('mongoose');
 const { toJSON } = require('./dbutils');
 
-const TeamSchema = new mongoose.Schema({
+const RoleSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
     unique: true,
     minlength: 3,
     maxlength: 30,
+    match: /[a-zA-Z1-9]+/,
+  },
+  description: {
+    type: String,
+    required: true,
   },
   createdUser: {
     type: mongoose.Types.ObjectId,
@@ -16,11 +21,12 @@ const TeamSchema = new mongoose.Schema({
   },
   createdDate: {
     type: Date,
+    required: true,
     default: Date.now
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
-    required: false,
+    ref: 'User',
   },
   modifiedDate: {
     type: Date,
@@ -28,10 +34,10 @@ const TeamSchema = new mongoose.Schema({
   },
 }, { autoCreate: true });
 
-TeamSchema.set('toJSON', {
+RoleSchema.set('toJSON', {
   transform: toJSON
 });
 
-const TeamModel = mongoose.model('Team', TeamSchema);
+const RoleModel = mongoose.model('Role', RoleSchema);
 
-module.exports = TeamModel;
+module.exports = RoleModel;

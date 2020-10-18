@@ -1,5 +1,6 @@
 const UserModel = require('../models/UserModel');
 const OrganizationModel = require('../models/OrganizationModel');
+const TeamService = require('./TeamService');
 
 const UserService = {
   getUser: async (id) => {
@@ -7,9 +8,28 @@ const UserService = {
     return user;
   },
 
+  getUserByUsername: async (username) => {
+    let user = await UserModel.find({
+      username: username
+    }).populate('organizations');
+    return user.length ? user[0] : null;
+  },
+
+  updateUser: async (user) => {
+    let updatedUser = await UserModel.findByIdAndUpdate(user.id, user, { new: true });
+    return updatedUser;
+  },
+
+  updateSelf: async (user) => {
+    delete user.securityLevel;
+    delete user.organizations;
+    let updatedUser = await UserModel.findByIdAndUpdate(user.id, user, { new: true });
+    return updatedUser;
+  },
+
   addDefaultUser: async (id) => {
     let newUser = new UserModel({
-      _id: id,
+      username: id,
       securityLevel: 1
     });
     return await newUser.save();
@@ -43,7 +63,7 @@ const UserService = {
   },
 
   /**
-   * I want to be able to get all the users from my organization that have the securityLevel lower than me
+   * I want to be able to get all the users from my organization that have the securityLevel lower or equal than me
    * + i want to include myself here
    */
   getUserOrganizationUsers: async function(user) {
@@ -76,15 +96,24 @@ const UserService = {
    *  1. True if he has securityLevel lower than me
    *  2. And if he is in at least one of my teams
    *  3. And if he is in at least one of my organizations
+   *  4. If he is not a part of any organizations
    */
   isTeamMember: async function(curentUser, memberId) {
     const dbUser = await UserModel.findById(curentUser.id);
+    if (dbUser.id === memberId)
+      return true;
     const user = await UserModel.find({
       $and: [
         { _id: memberId },
         { securityLevel: { $lt: dbUser.securityLevel } },
-        { teams: { $in: dbUser.teams } },
-        { organizations: { $in: dbUser.organizations } }
+        { $or: [
+          { teams: { $in: dbUser.teams }},
+          { teams: { $eq: [] }}
+        ]},
+        { $or: [
+          { organizations: { $in: dbUser.organizations } },
+          { organizations: { $eq: [] } }
+        ]}
       ]
     });
     return user.length !== 0;

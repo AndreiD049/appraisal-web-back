@@ -25,6 +25,30 @@ userRouter.get('/', async(req, res, next) => {
   }
 });
 
+/**
+ * I want to be able to update users via PUT call
+ */
+userRouter.put('/:id', async(req, res, next) => {
+  try {
+    const id = req.params['id'];
+    const user = req.body;
+    if (!user.id)
+      throw new Error('No valid id found in request body');
+    if (!(await UserService.isTeamMember(req.user, id))) {
+      throw new Error(`Cannot update user ${user.id}. User is not a part of your teams.`);
+    }
+    let result;
+    if (req.user.id === user.id) {
+      result = await (await UserService.updateSelf(user)).populate('organizations').populate('teams').execPopulate();
+    } else {
+      result = await (await UserService.updateUser(user)).populate('organizations').populate('teams').execPopulate();
+    }
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
 /* 
     I want to be able to get other user's info. But i cannot do that
   if the user is not on my team.

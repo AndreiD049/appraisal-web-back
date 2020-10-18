@@ -5,6 +5,7 @@ const meRouter = require('../api/routes/me');
 const appraisalPeriodsRouter = require('../api/routes/periods');
 const userRouter = require('../api/routes/user');
 const teamRouter = require('../api/routes/team');
+const securityRouter = require('../api/routes/security');
 
 const init = async ({ app }) => {
   app.use(morgan('tiny'));
@@ -26,6 +27,7 @@ const init = async ({ app }) => {
   app.use('/api/periods', appraisalPeriodsRouter);
   app.use('/api/users', userRouter);
   app.use('/api/teams', teamRouter);
+  app.use('/api/security', securityRouter);
 
   return app;
 };

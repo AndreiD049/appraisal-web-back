@@ -61,7 +61,7 @@ const init = async ({app}) => {
       return done(new Error("No oid found"), null);
     }
     // before attaching it to the req, add the info from mongo db
-    let dbUser = await UserService.getUser(profile._json.preferred_username);
+    let dbUser = await UserService.getUserByUsername(profile._json.preferred_username);
     if (dbUser === null) {
       // Add the user to the DB
       dbUser = await UserService.addDefaultUser(profile._json.preferred_username);

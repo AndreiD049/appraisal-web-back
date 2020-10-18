@@ -18,7 +18,9 @@ appraisalPeriodsRouter.get('/', async (req, res, next) => {
 appraisalPeriodsRouter.post('/', async(req, res, next) => {
   try {
     const body = req.body;
-    const period = await AppraisalService.createPeriod(req.user, body);
+    const period = await (await AppraisalService.createPeriod(req.user, body))
+      .populate({ path: 'createdUser', select: 'username' })
+      .execPopulate();
     res.json(period);
   } catch (err) {
     next(err);
@@ -28,7 +30,7 @@ appraisalPeriodsRouter.post('/', async(req, res, next) => {
 // Get period details, includeing all items
 appraisalPeriodsRouter.get('/:id', async (req, res, next) => {
   try {
-    const periodId = req.params["id"];
+    const periodId = req.params['id'];
 
     const period = (await AppraisalService.getPeriodById(periodId)).calculateStatus(req.user).toJSON();
 

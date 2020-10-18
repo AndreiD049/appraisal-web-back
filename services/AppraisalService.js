@@ -15,9 +15,9 @@ const AppraisalService = {
      */ 
     const dbUser = await UserModel.findById(user.id);
     let docs = await AppraisalPeriodModel.find().or([
-      { "dbUsers": dbUser.id, status: "Finished" },
+      { "users": dbUser.id, status: "Finished" },
       { status: "Active", organizationId: { $in: dbUser.organizations } }
-    ]);
+    ]).populate('createdUser');
     return docs.map(el => el.calculateStatus(dbUser))
   },
 
