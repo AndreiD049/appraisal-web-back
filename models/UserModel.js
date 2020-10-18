@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 const { toJSON } = require('./dbutils');
 
 const UserSchema = new mongoose.Schema({
-  _id: {
+  username: {
     type: String,
     required: true,
+    unique: true,
     minlength: 6,
     maxlength: 50,
     match: /[a-zA-Z1-9]+/,
@@ -20,12 +21,13 @@ const UserSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  role: {
+    type: mongoose.Types.ObjectId,
+    ref: 'Role'
+  },
   teams: [{
     type: mongoose.Types.ObjectId,
     required: false,
-    minlength: 3,
-    maxlength: 30,
-    match: /[a-zA-Z1-9]+/,
     ref: 'Team',
   }],
   organizations: [{
