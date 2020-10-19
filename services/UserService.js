@@ -4,14 +4,14 @@ const TeamService = require('./TeamService');
 
 const UserService = {
   getUser: async (id) => {
-    let user = await UserModel.findById(id).populate('organizations');
+    let user = await UserModel.findById(id);
     return user;
   },
 
   getUserByUsername: async (username) => {
     let user = await UserModel.find({
       username: username
-    }).populate('organizations');
+    });
     return user.length ? user[0] : null;
   },
 
@@ -21,7 +21,6 @@ const UserService = {
   },
 
   updateSelf: async (user) => {
-    delete user.securityLevel;
     delete user.organizations;
     let updatedUser = await UserModel.findByIdAndUpdate(user.id, user, { new: true });
     return updatedUser;
@@ -30,7 +29,6 @@ const UserService = {
   addDefaultUser: async (id) => {
     let newUser = new UserModel({
       username: id,
-      securityLevel: 1
     });
     return await newUser.save();
   },
@@ -46,16 +44,14 @@ const UserService = {
   /*
    *  User team members are:
    *    1. Users that have the same teams as the current user
-   *    2. Users that have securityLevel lower than the user
    */
   getCurrentUserTeamMembers: async function(user) {
     const dbUser = await UserModel.findById(user.id);
     const members = await UserModel.find(
       {
         $and: [
-          { securityLevel: { $lt: dbUser.securityLevel } },
           { teams: { $in: dbUser.teams } },
-          { organizations: { $in: dbUser.organizations } }
+          { organizations: dbUser.organization }
         ]
       }
     );
@@ -63,7 +59,7 @@ const UserService = {
   },
 
   /**
-   * I want to be able to get all the users from my organization that have the securityLevel lower or equal than me
+   * I want to be able to get all the users from my organization 
    * + i want to include myself here
    */
   getUserOrganizationUsers: async function(user) {
@@ -73,11 +69,10 @@ const UserService = {
         $or: [
           { _id: dbUser.id },
           { $and: [
-            { securityLevel: { $lt: dbUser.securityLevel } },
-            { organizations: { $in: dbUser.organizations } }
+            { organizations: dbUser.organization }
           ]}
         ]
-      }).populate('organizations').populate('teams');
+      });
     return users || [];
   },
 
@@ -87,16 +82,15 @@ const UserService = {
   getNewcomers: async function() {
     const users = await UserModel.find(
       { organizations: { $exists: true, $eq: [] }, 
-    }).populate('teams');
+    });
     return users || [];
   },
 
   /*
    * Is the memberId user in my team:
-   *  1. True if he has securityLevel lower than me
-   *  2. And if he is in at least one of my teams
-   *  3. And if he is in at least one of my organizations
-   *  4. If he is not a part of any organizations
+   *  1. And if he is in at least one of my teams
+   *  2. And if he is in at least one of my organizations
+   *  3. If he is not a part of any organizations
    */
   isTeamMember: async function(curentUser, memberId) {
     const dbUser = await UserModel.findById(curentUser.id);
@@ -105,13 +99,12 @@ const UserService = {
     const user = await UserModel.find({
       $and: [
         { _id: memberId },
-        { securityLevel: { $lt: dbUser.securityLevel } },
         { $or: [
           { teams: { $in: dbUser.teams }},
           { teams: { $eq: [] }}
         ]},
         { $or: [
-          { organizations: { $in: dbUser.organizations } },
+          { organizations: dbUser.organization },
           { organizations: { $eq: [] } }
         ]}
       ]

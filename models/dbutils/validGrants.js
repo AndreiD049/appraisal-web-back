@@ -1,4 +1,5 @@
 const validGrants = [
+  'overrule',
   'read',
   'write',
   'execute',
@@ -6,7 +7,12 @@ const validGrants = [
   'finish',
   'update',
   'delete',
-  'cancel'
+  'cancel',
+  'general',
+  'users',
+  'appraisal-items',
+  'appraisal-periods',
+  'permissions'
 ];
 
 module.exports = validGrants;

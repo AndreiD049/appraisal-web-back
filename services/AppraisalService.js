@@ -16,7 +16,7 @@ const AppraisalService = {
     const dbUser = await UserModel.findById(user.id);
     let docs = await AppraisalPeriodModel.find().or([
       { "users": dbUser.id, status: "Finished" },
-      { status: "Active", organizationId: { $in: dbUser.organizations } }
+      { status: "Active", organizationId: dbUser.organization }
     ]).populate('createdUser');
     return docs.map(el => el.calculateStatus(dbUser))
   },
@@ -194,7 +194,6 @@ const AppraisalService = {
   },
 
   finishPeriod: async function(periodId, user) {
-    console.log(periodId);
     const period = await AppraisalPeriodModel.findById(periodId);
     if (!period)
       throw new Error('Period was not found');
