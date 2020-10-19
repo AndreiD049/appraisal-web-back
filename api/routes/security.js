@@ -69,6 +69,9 @@ securityRouter.get('/roles', async (req, res, next) => {
 securityRouter.get('/permissions/me', async (req, res, next) => {
   try {
     const { id, role, organization } = req.user;
+    if (!organization) {
+      return res.json([]);
+    }
     const userPermissions = (await PermissionService.getUserPermissions(id)).filter(p => p.code) || [];
     const rolePermissions = (await PermissionService.getRolePermissions(role && role.id, organization.id)).filter(p => p.code) || [];
     const result = userPermissions;
