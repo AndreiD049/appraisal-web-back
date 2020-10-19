@@ -29,10 +29,11 @@ const validateBody = (body) => {
 
 const validateBodyRequest = (req, res, next) => {
     try {
+      req.body.organization = req.user.organization.id;
       const body = req.body;
-      const valid = validateBody(body);
-      if (!valid) {
-        throw new Error(valid.errMessage);
+      const result = validateBody(body);
+      if (!result.valid) {
+        throw new Error(result.errMessage);
       }
       next();
     } catch (err) {
@@ -48,7 +49,7 @@ const handleCreate = (req, res, next) => {
 
 // Before each requestm check if there is a user
 securityRouter.use(async (req, res, next) => {
-  if (!req.user || !req.user.organizations)
+  if (!req.user)
     next(new Error("User is not attached to the request"));
   next();
 });
@@ -67,9 +68,9 @@ securityRouter.get('/roles', async (req, res, next) => {
  */
 securityRouter.get('/permissions/me', async (req, res, next) => {
   try {
-    const { id, role } = req.user;
+    const { id, role, organization } = req.user;
     const userPermissions = (await PermissionService.getUserPermissions(id)).filter(p => p.code) || [];
-    const rolePermissions = (await PermissionService.getRolePermissions(role)).filter(p => p.code) || [];
+    const rolePermissions = (await PermissionService.getRolePermissions(role && role.id, organization.id)).filter(p => p.code) || [];
     const result = userPermissions;
     rolePermissions.forEach(element => {
       if (result.filter(el => el.code.code === element.code.code).length === 0)
@@ -143,7 +144,7 @@ securityRouter.get('/permissions/organization', async(req, res, next) => {
  */
 securityRouter.get('/permissions/role', async (req, res, next) => {
   try {
-    const result = await PermissionService.getAllRolesPermissions();
+    const result = await PermissionService.getAllRolesPermissions(req.user.organization.id);
     res.json(result);
   } catch (err) {
     next(err);

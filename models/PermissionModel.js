@@ -7,6 +7,13 @@ const validTypes = [
   'User'
 ];
 
+const autoPopulate = function(next) {
+  this
+    .populate({ path: 'code', select: 'code description' })
+    .populate({ path: 'organization', select: 'name' })
+  next();
+}
+
 const PermissionSchema = new mongoose.Schema({
   code: {
     type: mongoose.Types.ObjectId,
@@ -18,6 +25,11 @@ const PermissionSchema = new mongoose.Schema({
     required: true,
     refPath: 'permissionType'
   },
+  organization: {
+    type: mongoose.Types.ObjectId,
+    required: true,
+    ref: 'Organization',
+  },
   permissionType: {
     type: String,
     required: true,
@@ -27,7 +39,7 @@ const PermissionSchema = new mongoose.Schema({
     type: String,
     default: [],
     enum: validGrants
-  }],
+  }],  
   createdUser: {
     type: mongoose.Types.ObjectId,
     required: true,
@@ -51,6 +63,12 @@ const PermissionSchema = new mongoose.Schema({
 PermissionSchema.set('toJSON', {
   transform: toJSON,
 });
+
+PermissionSchema
+  .pre('find', autoPopulate)
+  .pre('findOne', autoPopulate)
+  .pre('findOneAndRemove', autoPopulate)
+  .pre('findOneAndUpdate', autoPopulate);
 
 const PermissionModel = mongoose.model('Permission', PermissionSchema);
 

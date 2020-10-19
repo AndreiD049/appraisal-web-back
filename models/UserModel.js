@@ -1,6 +1,15 @@
 const mongoose = require('mongoose');
 const { toJSON } = require('./dbutils');
 
+const autoPopulate = function(next) {
+  this
+    .populate({ path: 'role', select: 'name' })
+    .populate({ path: 'teams', select: 'name' })
+    .populate({ path: 'organizations', select: 'name' })
+    .populate({ path: 'organization', select: 'name' });
+  next();
+}
+
 const UserSchema = new mongoose.Schema({
   username: {
     type: String,
@@ -17,10 +26,6 @@ const UserSchema = new mongoose.Schema({
     maxlength: 30,
     match: /[a-zA-Z1-9]+/,
   },
-  securityLevel: {
-    type: Number,
-    required: true,
-  },
   role: {
     type: mongoose.Types.ObjectId,
     ref: 'Role'
@@ -29,7 +34,12 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Types.ObjectId,
     required: false,
     ref: 'Team',
-  }],
+  }],  
+  organization: {
+    type: mongoose.Types.ObjectId,
+    required: false,
+    ref: 'Organization',
+  },
   organizations: [{
     type: mongoose.Types.ObjectId,
     required: false,
@@ -40,6 +50,12 @@ const UserSchema = new mongoose.Schema({
 UserSchema.set('toJSON', {
   transform: toJSON
 });
+
+UserSchema
+  .pre('find', autoPopulate)
+  .pre('findOne', autoPopulate)
+  .pre('findOneAndRemove', autoPopulate)
+  .pre('findOneAndUpdate', autoPopulate);
 
 const UserModel = mongoose.model('User', UserSchema);
 
