@@ -1,28 +1,37 @@
 const UserModel = require('../models/UserModel');
 const OrganizationModel = require('../models/OrganizationModel');
 const TeamService = require('./TeamService');
+const RoleModel = require('../models/RoleModel');
 
 const UserService = {
-  getUser: async (id) => {
-    let user = await UserModel.findById(id);
+  populate: (doc) => {
+    return doc
+      .populate({ path: 'role', select: 'name securityLevel' })
+      .populate({ path: 'teams', select: 'name' })
+      .populate({ path: 'organizations', select: 'name' })
+      .populate({ path: 'organization', select: 'name' });
+  },
+
+  getUser: async function(id) {
+    let user = await this.populate(UserModel.findById(id));
     return user;
   },
 
-  getUserByUsername: async (username) => {
-    let user = await UserModel.find({
+  getUserByUsername: async function(username) {
+    let user = await this.populate(UserModel.find({
       username: username
-    });
+    }));
     return user.length ? user[0] : null;
   },
 
-  updateUser: async (user) => {
-    let updatedUser = await UserModel.findByIdAndUpdate(user.id, user, { new: true });
+  updateUser: async function(user) {
+    let updatedUser = await this.populate(UserModel.findByIdAndUpdate(user.id, user, { new: true }));
     return updatedUser;
   },
 
-  updateSelf: async (user) => {
+  updateSelf: async function(user) {
     delete user.organizations;
-    let updatedUser = await UserModel.findByIdAndUpdate(user.id, user, { new: true });
+    let updatedUser = await this.populate(UserModel.findByIdAndUpdate(user.id, user, { new: true }));
     return updatedUser;
   },
 
@@ -44,36 +53,43 @@ const UserService = {
   /*
    *  User team members are:
    *    1. Users that have the same teams as the current user
+   *    2. Returned users should have roles with lower securitylevel than ME
    */
-  getCurrentUserTeamMembers: async function(user) {
-    const dbUser = await UserModel.findById(user.id);
-    const members = await UserModel.find(
+  getUserTeamMembers: async function(user) {
+    const dbUser = await this.getUser(user.id);
+    if (!dbUser.role || !dbUser.organization) {
+      return [];
+    }
+    const members = await UserModel.aggregate([
       {
-        $and: [
-          { teams: { $in: dbUser.teams } },
-          { organizations: dbUser.organization }
-        ]
+        $lookup: {
+          from: 'roles',
+          localField: 'role',
+          foreignField: '_id',
+          as: 'roleObj'
+        }
+      },
+      {
+        $match: {
+          teams: { $in: dbUser.teams },
+          organizations: dbUser.organization._id,
+          'roleObj.securityLevel': { $lt: dbUser.role.securityLevel }
+        }
+      },
+      {
+        $addFields: {
+          'id': '$_id'
+        }
+      },
+      {
+        $project: {
+          '_id': 0,
+          'roleObj': 0
+        }
       }
-    );
-    return members;
-  },
-
-  /**
-   * I want to be able to get all the users from my organization 
-   * + i want to include myself here
-   */
-  getUserOrganizationUsers: async function(user) {
-    const dbUser = await UserModel.findById(user.id);
-    const users = await UserModel.find(
-      {
-        $or: [
-          { _id: dbUser.id },
-          { $and: [
-            { organizations: dbUser.organization }
-          ]}
-        ]
-      });
-    return users || [];
+    ]);
+    const result = await UserModel.populate(members, {path: 'teams organizations organization role', select: 'name'});
+    return result;
   },
 
   /**
@@ -96,20 +112,8 @@ const UserService = {
     const dbUser = await UserModel.findById(curentUser.id);
     if (dbUser.id === memberId)
       return true;
-    const user = await UserModel.find({
-      $and: [
-        { _id: memberId },
-        { $or: [
-          { teams: { $in: dbUser.teams }},
-          { teams: { $eq: [] }}
-        ]},
-        { $or: [
-          { organizations: dbUser.organization },
-          { organizations: { $eq: [] } }
-        ]}
-      ]
-    });
-    return user.length !== 0;
+    const teammembers = (await this.getUserTeamMembers(dbUser)).map(m => m.id.toString());
+    return teammembers.indexOf(memberId) !== -1;
   }
 
 };

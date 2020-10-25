@@ -14,6 +14,11 @@ const RoleSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  securityLevel: {
+    type: Number,
+    required: true,
+    default: 1,
+  },
   createdUser: {
     type: mongoose.Types.ObjectId,
     required: true,

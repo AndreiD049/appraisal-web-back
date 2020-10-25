@@ -9,7 +9,7 @@ meRouter.get('/me', async (req, res, next) => {
   }
   else {
     // get the latest user updates
-    let userDB = (await UserService.getUser(req.user.id)).toJSON();
+    let userDB = await (await UserService.getUser(req.user.id)).toJSON();
     req.app.store.get(req.user.oid, (err, session) => {
       if (err) {
         next(err);

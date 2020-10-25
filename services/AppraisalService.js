@@ -2,7 +2,7 @@ const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
 const AppraisalItemModel = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
-const { Types } = require('mongoose');
+const mongoose = require('mongoose');
 
 const AppraisalService = {
   getPeriodsOverview: async function(user) {
@@ -17,8 +17,8 @@ const AppraisalService = {
     let docs = await AppraisalPeriodModel.find().or([
       { "users": dbUser.id, status: "Finished" },
       { status: "Active", organizationId: dbUser.organization }
-    ]).populate('createdUser');
-    return docs.map(el => el.calculateStatus(dbUser))
+    ]).populate({ path: 'createdUser', select: 'username' });
+    return docs;
   },
 
   getPeriodById: async function(id) {
@@ -31,13 +31,46 @@ const AppraisalService = {
     return await newPeriod.save();
   },
 
-  getItemsByPeriodId: async function(id, user) {
-    if (!user.id)
-      return null;
+  updatePeriod: async function(periodId, period) {
+    const newPeriod = await AppraisalPeriodModel.findByIdAndUpdate(periodId, period, { new: true });
+    return newPeriod;
+  },
+
+  /**
+   * Adding orphan items to period when user first time enters an appraisal period.
+   * An orphan item is an item:
+   *  - that has periodId eq to null
+   * Orphan items are created from Planned items when a period is finished
+   */
+  addOrphanUserItemsToPeriod: async function(periodId, userId) {
+    const period = await this.getPeriodById(periodId);
+    const orphans = await AppraisalItemModel.find({
+      user: userId,
+      periodId: null
+    });
+    const promises = orphans.map(async (orphan) => {
+      // Set the periodId
+      orphan.periodId = period.id;
+      await orphan.save();
+    });
+
+    await Promise.all(promises);
+  },
+
+  getUserItemsByPeriodId: async function(periodId, userId) {
+    // Get items of current period/User
+    const items = await AppraisalItemModel.find({
+      periodId: periodId,
+      user: userId
+    }).exec();
+
+    return items;
+  },  
+
+  getItemsByPeriodId: async function(id) {
     // Get items of current period/User
     const items = await AppraisalItemModel.find({
       periodId: id,
-      user: user.id
     }).exec();
 
     return items;
@@ -46,6 +79,18 @@ const AppraisalService = {
   getItemById: async function(itemId) {
     const item = await AppraisalItemModel.findById(itemId).exec();
     return item;
+  },
+
+  /**
+   * Create a copy of the item and return it's document
+   */
+  copyItem: async function(oldItem, session=null) {
+    const copy = new AppraisalItemModel(oldItem.toJSON());
+    // Delete the id's
+    delete copy._id;
+    delete copy.id;
+    const result = await copy.save({ session: session });
+    return result;
   },
 
   /*
@@ -61,8 +106,6 @@ const AppraisalService = {
     if (!period)
       throw new Error('Item has invalid Period id');
     if (period.status === 'Finished')
-      throw new Error('Period is already finished');
-    if (period.usersFinished && period.usersFinished.indexOf(user.id) !== -1)
       throw new Error('Period is already finished');
     if (item.type === 'Training_Suggested' && item.user === user.id) 
       throw new Error('You cannot add an \'Suggested Training\' item of yourself');
@@ -85,7 +128,7 @@ const AppraisalService = {
       throw new Error('User has no valid id');
     // Get the user to whom we add the item
     const subject_user = await UserService.getUser(item.user);
-    if (!(await UserService.isTeamMember(user, subject_user)))
+    if (!(await UserService.isTeamMember(user, subject_user.id)))
       throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
     const period = await this.getPeriodById(periodId);
     if (!period)
@@ -114,6 +157,8 @@ const AppraisalService = {
     const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
     if (item.status === 'Finished')
       throw new Error('Finished item cannot be updated');
+    if (item.relatedItemId !== null)
+      throw new Error('Related items cannot be updated');
     // Check period finished
     if (period.status === 'Finished')
       throw new Error('Finished period items cannot be updated');
@@ -123,12 +168,22 @@ const AppraisalService = {
     return updated;
   },
 
+  updateItemType: async function(itemId, type) {
+    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
+    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
+    if (item.status === 'Finished')
+      throw new Error('Finished item cannot be updated');
+    if (period.status === 'Finished')
+      throw new Error('Finished period items cannot be updated');
+    return (await AppraisalItemModel.findByIdAndUpdate(itemId, {type: type}, {new: true}));
+  },
+
   // Update item of another user
   updateItemOfMember: async function (itemId, update, user) {
     const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
     const subject_user = await UserService.getUser(item.user);
     // Check if user can update subjec_user's items at all
-    if (!(await UserService.isTeamMember(user, subject_user)))
+    if (!(await UserService.isTeamMember(user, subject_user.id)))
       throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
 
     const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
@@ -137,6 +192,19 @@ const AppraisalService = {
       throw new Error('Finished period items cannot be updated');
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, {new: true}).exec();
     return updated;
+  },
+
+  updateItemTypeOfMember: async function(itemId, type, user) {
+    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
+    const subject_user = await UserService.getUser(item.user);
+    // Check if user can update subjec_user's items at all
+    if (!(await UserService.isTeamMember(user, subject_user.id)))
+      throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
+    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
+    // Check if period was already finished completely
+    if (period.status === 'Finished')
+      throw new Error('Finished period items cannot be updated');
+    return (await AppraisalItemModel.findByIdAndUpdate(itemId, {type: type}, {new: true}));
   },
 
   /*
@@ -150,10 +218,10 @@ const AppraisalService = {
     const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
     if (item.status === 'Finished')
       throw new Error('Finished item cannot be deleted');
+    if (item.relatedItemId !== null)
+      throw new Error('Related items cannot be deleted');
     // Check period finished
     if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be deleted');
-    if (period.usersFinished && period.usersFinished.indexOf(user.id) !== -1)
       throw new Error('Finished period items cannot be deleted');
     // if type Training_suggested, check if you can delete it
     if (item.type === 'Training_Suggested' && item.user === user.id) 
@@ -167,52 +235,59 @@ const AppraisalService = {
     const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
     const subject_user = await UserService.getUser(item.user);
     // Check if user can update subjec_user's items at all
-    if (!(await UserService.isTeamMember(user, subject_user)))
+    if (!(await UserService.isTeamMember(user, subject_user.id)))
       throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
 
     const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
     // Check period finished
     if (period.status === 'Finished')
       throw new Error('Finished period items cannot be deleted');
-    if (item.type !== 'Training_Suggested') 
-      throw new Error('You cannot delete items of this type from other users');
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
   },
 
-  finishItem: async function(item) {
-    const itemDb = await AppraisalItemModel.findById(item.id).exec();
+  /**
+   * Finishing the item at period finishing.
+   * Error conditions: 
+   *  * item status is not active
+   * Rules:
+   *  1. If item type is not Planned, just set the status to Finished
+   *  2. If item type is Planned, create a copy of the item that has:
+   *    - periodId eq to null
+   *    - relatedItemId eq to original item _id
+   *    After, set the original item to Finished
+   */
+  finishItem: async function(item, session=null) {
+    const itemDb = await AppraisalItemModel.findById(item.id);
     if (['Finished', 'InProgress'].indexOf(itemDb.status) !== -1) 
       throw new Error(`Item '${itemDb.content}' is already finished`);
-    // if item type is Planned, change the status to InProgress
     if (itemDb.type === 'Planned') {
-      itemDb.status = 'InProgress';
-    } else {
-      itemDb.status = 'Finished';
+      const copy = await this.copyItem(itemDb, session);
+      copy.periodId = null;
+      copy.relatedItemId = itemDb.id;
+      copy.save({ session: session })
     }
-    itemDb.save();
+
+    itemDb.status = 'Finished';
+    itemDb.save({ session: session });
   },
 
   finishPeriod: async function(periodId, user) {
-    const period = await AppraisalPeriodModel.findById(periodId);
-    if (!period)
-      throw new Error('Period was not found');
-    if (period.status === 'Finished')
-      throw new Error('Period is already finished');
-    if (!user || !user.id)
-      throw new Error("User is no logged in");
-    if (period.usersFinished.indexOf(user.id) !== -1)
-      throw new Error("User already finished this period");
-    // Get all the items for this user and period
-    const items = await this.getItemsByPeriodId(periodId, user);
-    // We need to change the item status accordingly
-    items.forEach(async (item) => {
-      await this.finishItem(item);
+    // Create a session to use in transaction
+    const session = await AppraisalPeriodModel.startSession();
+    const transaction = await session.withTransaction(async () => {
+      const period = await AppraisalPeriodModel.findById(periodId).session(session);
+      period.status = 'Finished';
+      // Find all items related to this period
+      const items = await this.getItemsByPeriodId(period.id);
+      const modifications = items.map(i => this.finishItem(i, session));
+      await Promise.all(modifications);
+
+      await period.save();
+      return true;
     });
-    // Next, we need to add current user id to the period usersFinished
-    period.usersFinished.push(user.id);
-    period.save();
-    return true;
+    // return true or flase whether the transaction was successfull
+    return transaction.result.ok === 1;
   }
 };
 

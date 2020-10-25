@@ -2,7 +2,7 @@ const RoleModel = require("../../models/RoleModel");
 
 const RoleService = {
   getRoles: async () => {
-    const result = await RoleModel.find({}, 'name description');
+    const result = await RoleModel.find({}, 'name description securityLevel');
     return result;
   },
   getRoleById: async (id) => {
