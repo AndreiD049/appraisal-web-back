@@ -36,11 +36,17 @@ const AppraisalItemSchema = new mongoose.Schema({
   },
   periodId: {
     type: mongoose.ObjectId,
-    required: true
+    required: false,
+    default: null,
   },
   organizationId: {
     type: mongoose.ObjectId,
     required: true
+  },
+  relatedItemId: {
+    type: mongoose.ObjectId,
+    required: false,
+    default: null
   },
   user: {
     type: mongoose.Types.ObjectId,

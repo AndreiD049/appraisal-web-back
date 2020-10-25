@@ -1,5 +1,7 @@
 const securityRouter = require('express').Router();
+const UserModel = require('../../models/UserModel');
 const { AuthorizationService, PermissionService, RoleService } = require('../../services/AuthorizationService');
+const UserService = require('../../services/UserService');
 
 const validateBody = (body) => {
   const result = {

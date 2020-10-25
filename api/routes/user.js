@@ -17,9 +17,10 @@ userRouter.use(async (req, res, next) => {
  */
 userRouter.get('/', async(req, res, next) => {
   try {
-    const users = await UserService.getUserOrganizationUsers(req.user);
+    const dbUser = await UserService.getUser(req.user.id);
+    const users = await UserService.getUserTeamMembers(req.user);
     const newcomers = await UserService.getNewcomers();
-    res.json(users.concat(newcomers));
+    res.json(users.concat(newcomers, dbUser));
   } catch (err) {
     next(err);
   }
@@ -81,7 +82,7 @@ userRouter.get('/organizations', async( req, res, next) => {
 
 userRouter.get('/team-members', async (req, res, next) => {
   try {
-    const members = await UserService.getCurrentUserTeamMembers(req.user);
+    const members = await UserService.getUserTeamMembers(req.user);
     res.json(members.map(member => member));
   } catch (err) {
     next(err);

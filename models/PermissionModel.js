@@ -7,13 +7,6 @@ const validTypes = [
   'User'
 ];
 
-const autoPopulate = function(next) {
-  this
-    .populate({ path: 'code', select: 'code description' })
-    .populate({ path: 'organization', select: 'name' })
-  next();
-}
-
 const PermissionSchema = new mongoose.Schema({
   code: {
     type: mongoose.Types.ObjectId,
@@ -63,12 +56,6 @@ const PermissionSchema = new mongoose.Schema({
 PermissionSchema.set('toJSON', {
   transform: toJSON,
 });
-
-PermissionSchema
-  .pre('find', autoPopulate)
-  .pre('findOne', autoPopulate)
-  .pre('findOneAndRemove', autoPopulate)
-  .pre('findOneAndUpdate', autoPopulate);
 
 const PermissionModel = mongoose.model('Permission', PermissionSchema);
 

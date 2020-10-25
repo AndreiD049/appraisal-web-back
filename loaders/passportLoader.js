@@ -67,7 +67,7 @@ const init = async ({app}) => {
       dbUser = await UserService.addDefaultUser(profile._json.preferred_username);
     }
     dbUser = dbUser.toJSON();
-    let sessionUser = {...profile, ...dbUser};
+    let sessionUser = { oid: profile.oid, displayName: profile.displayName, name: profile.name, ...dbUser};
     process.nextTick(function () {
       app.store.set(profile.oid, sessionUser, (err) => {
         if (err) {
