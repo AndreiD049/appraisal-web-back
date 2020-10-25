@@ -104,37 +104,6 @@ appraisalPeriodsRouter.post('/:id/items', AuthorizeReq('APPRAISAL DETAILS', 'cre
   }
 });
 
-// POST /api/periods/:periodId/items/:it/change-type
-appraisalPeriodsRouter.post('/:periodId/items/:id/change-type', AuthorizeReq('APPRAISAL DETAILS', 'update'), async(req, res, next) => {
-  try {
-    const itemId = req.params['id'];
-    const body = req.body;
-
-    if (!body.type) 
-      throw new Error('Type was not specified');
-    res.json(await AppraisalService.updateItemType(itemId, body.type));
-  } catch (err) {
-    next(err);
-  }
-});
-
-// POST /api/periods/:periodId/users/:userId/items/:it/change-type
-appraisalPeriodsRouter.post('/:periodId/users/:userId/items/:id/change-type', AuthorizeReq('APPRAISAL DETAILS', 'update'), async(req, res, next) => {
-  try {
-    const itemId = req.params['id'];
-    const userId = req.params['userId'];
-    const body = req.body;
-    
-    const user = await UserService.getUser(userId);
-
-    if (!body.type) 
-      throw new Error('Type was not specified');
-    res.json(await AppraisalService.updateItemTypeOfMember(itemId, body.type, user));
-  } catch (err) {
-    next(err);
-  }
-});
-
 // PUT /api/periods/:periodId/items/:id
 // Modified an item and returns the modified version
 appraisalPeriodsRouter.put('/:periodId/items/:id', AuthorizeReq('APPRAISAL DETAILS', 'update'), async (req, res, next) => {

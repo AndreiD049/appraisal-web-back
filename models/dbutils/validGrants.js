@@ -12,7 +12,7 @@ const validGrants = [
   'users',
   'appraisal-items',
   'appraisal-periods',
-  'permissions'
+  'permissions',
 ];
 
 module.exports = validGrants;

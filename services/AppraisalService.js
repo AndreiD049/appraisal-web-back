@@ -2,7 +2,48 @@ const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
 const AppraisalItemModel = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
-const mongoose = require('mongoose');
+
+const validations = {
+  validatePeriodActive: function(period, message=null) {
+    if (!period)
+      throw new Error(message || `Invalid period - ${period}`);
+    if (period.status === 'Finished')
+      throw new Error(message || `Invalid period status - ${period.status}`);
+  },
+  validateItemUpdate: async function(item, update) {
+    if (item.relatedItemId && (!update.content || update.content !== item.content))
+      throw new Error('Item has related entries. Cannot update.');
+    const period = await AppraisalPeriodModel.findById(item.periodId);
+    this.validatePeriodActive(period);
+    this.validateItemNotFinished(item);
+  },
+  validateItemDelete: async function(item) {
+    if (item.relatedItemId)
+      throw new Error('Item has related entries. Cannot delete.');
+    const period = await AppraisalPeriodModel.findById(item.periodId);
+    this.validatePeriodActive(period);
+    this.validateItemNotFinished(item);
+  },
+  validateItemFinish: async function(item) {
+    const period = await AppraisalPeriodModel.findById(item.periodId);
+    this.validatePeriodActive(period);
+    if (item.status !== 'Active') {
+      throw new Error(`Item type invalid - ${item.type}`);
+    }
+  },
+  validateItemNotFinished: function(item) {
+    if (item.status === 'Finished')
+      throw new Error(`Error: item is finished`);
+  },
+  validateItemTypeIsNot: function(item, type) {
+    if (item.type === type)
+      throw new Error(`Error: item.type is ${type}`);
+  },
+  validateUserInTeam: async function(user, teamMember) {
+    if (!(await UserService.isTeamMember(user, teamMember.id)))
+      throw new Error(`Cannot update. User is not a member of my teams.`);
+  },
+}
 
 const AppraisalService = {
   getPeriodsOverview: async function(user) {
@@ -100,15 +141,9 @@ const AppraisalService = {
    *    3. I cannot insert an item of Training Suggested for myself
    */ 
   addItemToPeriod: async function (periodId, item, user) {
-    if (!user.id)
-      throw new Error('Item has no valid id');
     const period = await this.getPeriodById(periodId);
-    if (!period)
-      throw new Error('Item has invalid Period id');
-    if (period.status === 'Finished')
-      throw new Error('Period is already finished');
-    if (item.type === 'Training_Suggested' && item.user === user.id) 
-      throw new Error('You cannot add an \'Suggested Training\' item of yourself');
+    validations.validatePeriodActive(period);
+    validations.validateItemTypeIsNot(item, 'Training_Suggested');
     const model = new AppraisalItemModel({
       type: item.type,
       status: item.status,
@@ -124,17 +159,11 @@ const AppraisalService = {
   // Add item to another user
   // Check if user is a team member
   addItemToPeriodOfMember: async function(periodId, item, user) {
-    if (!user.id)
-      throw new Error('User has no valid id');
     // Get the user to whom we add the item
     const subject_user = await UserService.getUser(item.user);
-    if (!(await UserService.isTeamMember(user, subject_user.id)))
-      throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
     const period = await this.getPeriodById(periodId);
-    if (!period)
-      throw new Error('Item has invalid Period id');
-    if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be updated');
+    validations.validatePeriodActive(period);
+    await validations.validateUserInTeam(user, subject_user);
     const model = new AppraisalItemModel({
       type: item.type,
       status: item.status,
@@ -153,59 +182,28 @@ const AppraisalService = {
    * 2. I cannot update an item whose period is already finished
    */
   updateItem: async function (itemId, update) {
-    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
-    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
-    if (item.status === 'Finished')
-      throw new Error('Finished item cannot be updated');
-    if (item.relatedItemId !== null)
-      throw new Error('Related items cannot be updated');
-    // Check period finished
-    if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be updated');
-    if (item.type === 'Training_Suggested') 
-      throw new Error('You cannot update an \'Suggested Training\' item of yourself');
+    const item = await AppraisalItemModel.findById(itemId);
+
+    await validations.validateItemUpdate(item, update);
+    validations.validateItemTypeIsNot(item, 'Training_Suggested');
+
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, {new: true}).exec();
     return updated;
   },
 
-  updateItemType: async function(itemId, type) {
-    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
-    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
-    if (item.status === 'Finished')
-      throw new Error('Finished item cannot be updated');
-    if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be updated');
-    return (await AppraisalItemModel.findByIdAndUpdate(itemId, {type: type}, {new: true}));
-  },
 
   // Update item of another user
   updateItemOfMember: async function (itemId, update, user) {
-    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
+    const item = await AppraisalItemModel.findById(itemId);
     const subject_user = await UserService.getUser(item.user);
-    // Check if user can update subjec_user's items at all
-    if (!(await UserService.isTeamMember(user, subject_user.id)))
-      throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
 
-    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
-    // Check if period was already finished completely
-    if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be updated');
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, {new: true}).exec();
+    await validations.validateItemUpdate(item, update);
+    await validations.validateUserInTeam(user, subject_user);
+
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, {new: true});
     return updated;
   },
 
-  updateItemTypeOfMember: async function(itemId, type, user) {
-    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
-    const subject_user = await UserService.getUser(item.user);
-    // Check if user can update subjec_user's items at all
-    if (!(await UserService.isTeamMember(user, subject_user.id)))
-      throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
-    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
-    // Check if period was already finished completely
-    if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be updated');
-    return (await AppraisalItemModel.findByIdAndUpdate(itemId, {type: type}, {new: true}));
-  },
 
   /*
    * Validation:
@@ -213,35 +211,24 @@ const AppraisalService = {
    * 2. I cannot delete an item whose period is already finished
    * 3. I cannot delete an Training suggested item of myself
    */
-  deleteItem: async function(itemId, user) {
+  deleteItem: async function(itemId) {
     const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
-    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
-    if (item.status === 'Finished')
-      throw new Error('Finished item cannot be deleted');
-    if (item.relatedItemId !== null)
-      throw new Error('Related items cannot be deleted');
-    // Check period finished
-    if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be deleted');
-    // if type Training_suggested, check if you can delete it
-    if (item.type === 'Training_Suggested' && item.user === user.id) 
-      throw new Error('You cannot delete an \'Suggested Training\' item of yourself');
+
+    await validations.validateItemDelete(item);
+    validations.validateItemTypeIsNot(item, 'Training_Suggested');
+
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
   },
 
   // Delete item of another user
   deleteItemOfMember: async function(itemId, user) {
-    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
+    const item = await AppraisalItemModel.findById(itemId);
     const subject_user = await UserService.getUser(item.user);
-    // Check if user can update subjec_user's items at all
-    if (!(await UserService.isTeamMember(user, subject_user.id)))
-      throw new Error(`User '${subject_user.id}' is not a member of '${user.id}' teams`);
 
-    const period = (await AppraisalPeriodModel.findById(item.periodId).exec()).toJSON();
-    // Check period finished
-    if (period.status === 'Finished')
-      throw new Error('Finished period items cannot be deleted');
+    await validations.validateItemDelete(item);
+    await validations.validateUserInTeam(user, subject_user);
+
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
   },
@@ -259,8 +246,7 @@ const AppraisalService = {
    */
   finishItem: async function(item, session=null) {
     const itemDb = await AppraisalItemModel.findById(item.id);
-    if (['Finished', 'InProgress'].indexOf(itemDb.status) !== -1) 
-      throw new Error(`Item '${itemDb.content}' is already finished`);
+    await validations.validateItemFinish(itemDb);
     if (itemDb.type === 'Planned') {
       const copy = await this.copyItem(itemDb, session);
       copy.periodId = null;
