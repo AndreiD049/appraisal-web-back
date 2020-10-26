@@ -3,6 +3,7 @@ const cors = require('cors');
 const morgan = require('morgan');
 const meRouter = require('../api/routes/me');
 const appraisalPeriodsRouter = require('../api/routes/periods');
+const appraisalItemsRouter = require('../api/routes/appraisal-items');
 const userRouter = require('../api/routes/user');
 const teamRouter = require('../api/routes/team');
 const securityRouter = require('../api/routes/security');
@@ -25,6 +26,7 @@ const init = async ({ app }) => {
 
   app.use('/api', meRouter);
   app.use('/api/periods', appraisalPeriodsRouter);
+  app.use('/api/appraisal-items', appraisalItemsRouter);
   app.use('/api/users', userRouter);
   app.use('/api/teams', teamRouter);
   app.use('/api/security', securityRouter);

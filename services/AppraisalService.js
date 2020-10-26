@@ -4,9 +4,23 @@ const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
 
 const validations = {
-  validatePeriodActive: function(period, message=null) {
-    if (!period)
-      throw new Error(message || `Invalid period - ${period}`);
+  validateItem: function(item) {
+    if (!item) {
+      throw new Error('Item is not valid');
+    }
+  },
+  validateUser: function(user) {    
+    if (!user.id) {
+      throw new Error('User has no id');
+    }
+    if (!user.organization) {
+      throw new Error('User has no organization');
+    }
+    if (!user.role) {
+      throw new Error('User has no role');
+    }
+  },
+  validatePeriodActive: function(period, message) {
     if (period.status === 'Finished')
       throw new Error(message || `Invalid period status - ${period.status}`);
   },
@@ -14,14 +28,19 @@ const validations = {
     if (item.relatedItemId && (!update.content || update.content !== item.content))
       throw new Error('Item has related entries. Cannot update.');
     const period = await AppraisalPeriodModel.findById(item.periodId);
-    this.validatePeriodActive(period);
+    if (period) {
+      this.validatePeriodActive(period);
+    }
     this.validateItemNotFinished(item);
   },
   validateItemDelete: async function(item) {
+    this.validateItem(item);
     if (item.relatedItemId)
       throw new Error('Item has related entries. Cannot delete.');
     const period = await AppraisalPeriodModel.findById(item.periodId);
-    this.validatePeriodActive(period);
+    if (period) {
+      this.validatePeriodActive(period);
+    }
     this.validateItemNotFinished(item);
   },
   validateItemFinish: async function(item) {
@@ -60,6 +79,23 @@ const AppraisalService = {
       { status: "Active", organizationId: dbUser.organization }
     ]).populate({ path: 'createdUser', select: 'username' });
     return docs;
+  },
+
+  /**
+   * 
+   * @param {object} user 
+   * Returns Orphan items for the user.
+   */
+  getOrphanItems: async function(user) {
+    // invalid user, or no organization
+    if (!user || !user.organization) {
+      return [];
+    }
+    const result = await AppraisalItemModel.find({
+      user: user.id,
+      periodId: null
+    });
+    return result;
   },
 
   getPeriodById: async function(id) {
@@ -156,6 +192,18 @@ const AppraisalService = {
     return await model.save();
   },
 
+  addItem: async function (item, user) {
+    console.log(user);
+    validations.validateUser(user);
+    const model = new AppraisalItemModel({
+      ...item,
+      organizationId: user.organization.id ? user.organization.id : user.organization,
+      user: user.id,
+      createdUser: user.id
+    });
+    return await model.save();
+  },
+
   // Add item to another user
   // Check if user is a team member
   addItemToPeriodOfMember: async function(periodId, item, user) {
@@ -187,7 +235,7 @@ const AppraisalService = {
     await validations.validateItemUpdate(item, update);
     validations.validateItemTypeIsNot(item, 'Training_Suggested');
 
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, {new: true}).exec();
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, {new: true});
     return updated;
   },
 
@@ -212,7 +260,7 @@ const AppraisalService = {
    * 3. I cannot delete an Training suggested item of myself
    */
   deleteItem: async function(itemId) {
-    const item = (await AppraisalItemModel.findById(itemId).exec()).toJSON();
+    const item = await AppraisalItemModel.findById(itemId);
 
     await validations.validateItemDelete(item);
     validations.validateItemTypeIsNot(item, 'Training_Suggested');
