@@ -2,6 +2,7 @@ const UserModel = require('../models/UserModel');
 const OrganizationModel = require('../models/OrganizationModel');
 const TeamService = require('./TeamService');
 const RoleModel = require('../models/RoleModel');
+const { indexOf } = require('../models/dbutils/validGrants');
 
 const UserService = {
   populate: (doc) => {
@@ -73,7 +74,7 @@ const UserService = {
         $match: {
           teams: { $in: dbUser.teams },
           organizations: dbUser.organization._id,
-          'roleObj.securityLevel': { $lt: dbUser.role.securityLevel }
+          'roleObj.securityLevel': { $lte: dbUser.role.securityLevel }
         }
       },
       {
@@ -96,9 +97,13 @@ const UserService = {
    * I want to be able to get all the users without any organization
    */
   getNewcomers: async function() {
-    const users = await UserModel.find(
-      { organizations: { $exists: true, $eq: [] }, 
-    });
+    const users = await UserModel.find({
+        $or: [
+          { role: null }, 
+          { teams: { $exists: true, $eq: [] }}, 
+          { organizations: { $exists: true, $eq: [] }}, 
+        ]
+      }).populate({path: 'teams organizations organization role', select: 'name'});
     return users || [];
   },
 
@@ -111,6 +116,10 @@ const UserService = {
   isTeamMember: async function(curentUser, memberId) {
     const dbUser = await UserModel.findById(curentUser.id);
     if (dbUser.id === memberId)
+      return true;
+    const newComers = (await this.getNewcomers()).map(m => m.id.toString());
+    console.log(newComers);
+    if (newComers.indexOf(memberId) !== -1)
       return true;
     const teammembers = (await this.getUserTeamMembers(dbUser)).map(m => m.id.toString());
     return teammembers.indexOf(memberId) !== -1;

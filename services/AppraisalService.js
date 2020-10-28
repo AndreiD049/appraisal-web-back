@@ -193,7 +193,6 @@ const AppraisalService = {
   },
 
   addItem: async function (item, user) {
-    console.log(user);
     validations.validateUser(user);
     const model = new AppraisalItemModel({
       ...item,

@@ -23,7 +23,6 @@ const OrganizationSchema = new mongoose.Schema({
   },
   modifiedDate: {
     type: Date,
-    default: Date.now
   },
 }, { autoCreate: true });
 

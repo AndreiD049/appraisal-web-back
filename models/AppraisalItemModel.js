@@ -1,4 +1,3 @@
-
 const mongoose = require('mongoose');
 const { toJSON } = require('./dbutils');
 
@@ -69,7 +68,6 @@ const AppraisalItemSchema = new mongoose.Schema({
   },
   modifiedDate: {
     type: Date,
-    default: Date.now
   }
 }, { autoCreate: true });
 

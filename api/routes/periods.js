@@ -1,5 +1,4 @@
 const appraisalPeriodsRouter = require('express').Router();
-const AppraisalPeriodModel = require('../../models/AppraisalPeriodModel');
 const AppraisalService = require('../../services/AppraisalService');
 const UserService = require('../../services/UserService');
 const { AuthorizeReq } = require('../../services/AuthorizationService').AuthorizationService;

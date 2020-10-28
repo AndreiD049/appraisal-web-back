@@ -36,7 +36,6 @@ const PermissionCodeSchema = new mongoose.Schema({
   },
   modifiedDate: {
     type: Date,
-    default: Date.now
   },
 }, { autoCreate: true, toJSON: { virtuals: true } });
 
