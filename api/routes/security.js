@@ -115,7 +115,7 @@ securityRouter.delete('/permissions/:id', async (req, res, next) => {
   try {
     const id = req.params['id'];
     const result = await PermissionService.deletePermission(id);
-    res.json(result);
+    res.status(204).json(result);
   } catch (err) {
     next(err);
   }

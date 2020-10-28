@@ -7,6 +7,7 @@ const appraisalItemsRouter = require('../api/routes/appraisal-items');
 const userRouter = require('../api/routes/user');
 const teamRouter = require('../api/routes/team');
 const securityRouter = require('../api/routes/security');
+const { auditsRouter } = require('../api/routes/audits');
 
 const init = async ({ app }) => {
   app.use(morgan('tiny'));
@@ -27,6 +28,7 @@ const init = async ({ app }) => {
   app.use('/api', meRouter);
   app.use('/api/periods', appraisalPeriodsRouter);
   app.use('/api/appraisal-items', appraisalItemsRouter);
+  app.use('/api/audits', auditsRouter);
   app.use('/api/users', userRouter);
   app.use('/api/teams', teamRouter);
   app.use('/api/security', securityRouter);

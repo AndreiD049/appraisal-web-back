@@ -3,10 +3,10 @@ const UserService = require('../../services/UserService');
 
 // Router for /api/users
 
-// Before each requestm check if there is a user
+// before each requestm check if there is a user
 userRouter.use(async (req, res, next) => {
-  if (!req.user || !req.user.organizations)
-    next(new Error("User is not attached to the request"));
+  if (!req.user)
+    next(new error("user is not attached to the request"));
   next();
 });
 
@@ -17,10 +17,9 @@ userRouter.use(async (req, res, next) => {
  */
 userRouter.get('/', async(req, res, next) => {
   try {
-    const dbUser = await UserService.getUser(req.user.id);
     const users = await UserService.getUserTeamMembers(req.user);
     const newcomers = await UserService.getNewcomers();
-    res.json(users.concat(newcomers, dbUser));
+    res.json(users.concat(newcomers));
   } catch (err) {
     next(err);
   }
