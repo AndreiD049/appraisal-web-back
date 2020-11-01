@@ -74,7 +74,7 @@ const UserService = {
         $match: {
           teams: { $in: dbUser.teams },
           organizations: dbUser.organization._id,
-          'roleObj.securityLevel': { $lte: dbUser.role.securityLevel }
+          'roleObj.securityLevel': { $lt: dbUser.role.securityLevel }
         }
       },
       {
