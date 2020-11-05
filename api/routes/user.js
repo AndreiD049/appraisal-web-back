@@ -1,4 +1,5 @@
 const userRouter = require('express').Router();
+const UserModel = require('../../models/UserModel');
 const UserService = require('../../services/UserService');
 
 // Router for /api/users
@@ -19,7 +20,8 @@ userRouter.get('/', async(req, res, next) => {
   try {
     const users = await UserService.getUserTeamMembers(req.user);
     const newcomers = await UserService.getNewcomers();
-    res.json(users.concat(newcomers));
+    const sameLevel = await UserService.getTeamMembersSameLevel(req.user);
+    res.json(users.concat(newcomers).concat(sameLevel));
   } catch (err) {
     next(err);
   }
@@ -34,9 +36,8 @@ userRouter.put('/:id', async(req, res, next) => {
     const user = req.body;
     if (!user.id)
       throw new Error('No valid id found in request body');
-    if (!(await UserService.isTeamMember(req.user, id))) {
+    if (!(await UserService.isTeamMember(req.user, id) || await UserService.isSameLevel(req.user, id)))
       throw new Error(`Cannot update user ${user.id}. User is not a part of your teams.`);
-    }
     let result;
     if (req.user.id === user.id) {
       result = await (await UserService.updateSelf(user)).populate('organizations').populate('teams').execPopulate();

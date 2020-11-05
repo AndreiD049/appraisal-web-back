@@ -93,6 +93,43 @@ const UserService = {
     return result;
   },
 
+  getTeamMembersSameLevel: async function(user) {
+    const dbUser = await this.getUser(user.id);
+    if (!dbUser.role || !dbUser.organization) {
+      return [];
+    }
+    const members = await UserModel.aggregate([
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'role',
+          foreignField: '_id',
+          as: 'roleObj'
+        }
+      },
+      {
+        $match: {
+          teams: { $in: dbUser.teams },
+          organizations: dbUser.organization._id,
+          'roleObj.securityLevel': { $eq: dbUser.role.securityLevel }
+        }
+      },
+      {
+        $addFields: {
+          'id': '$_id'
+        }
+      },
+      {
+        $project: {
+          '_id': 0,
+          'roleObj': 0
+        }
+      }
+    ]);
+    const result = await UserModel.populate(members, {path: 'teams organizations organization role', select: 'name'});
+    return result;
+  },
+
   /**
    * I want to be able to get all the users without any organization
    */
@@ -118,13 +155,19 @@ const UserService = {
     if (dbUser.id === memberId)
       return true;
     const newComers = (await this.getNewcomers()).map(m => m.id.toString());
-    console.log(newComers);
     if (newComers.indexOf(memberId) !== -1)
       return true;
     const teammembers = (await this.getUserTeamMembers(dbUser)).map(m => m.id.toString());
     return teammembers.indexOf(memberId) !== -1;
-  }
+  },
 
+  isSameLevel: async function(curentUser, memberId) {
+    const dbUser = await UserModel.findById(curentUser.id);
+    if (dbUser.id === memberId)
+      return true;
+    const teammembers = (await this.getTeamMembersSameLevel(dbUser)).map(m => m.id.toString());
+    return teammembers.indexOf(memberId) !== -1;
+  }
 };
 
 module.exports = UserService;
