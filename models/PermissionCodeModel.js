@@ -37,7 +37,7 @@ const PermissionCodeSchema = new mongoose.Schema({
   modifiedDate: {
     type: Date,
   },
-}, { autoCreate: true, toJSON: { virtuals: true } });
+});
 
 PermissionCodeSchema.set('toJSON', {
   transform: toJSON

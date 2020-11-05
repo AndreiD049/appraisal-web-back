@@ -36,7 +36,7 @@ const UserSchema = new mongoose.Schema({
     required: false,
     ref: 'Organization',
   }]
-}, { autoCreate: true });
+});
 
 UserSchema.set('toJSON', {
   transform: toJSON

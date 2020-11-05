@@ -1,5 +1,5 @@
 const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
-const AppraisalItemModel = require('../models/AppraisalItemModel');
+const { AppraisalItemModel } = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
 

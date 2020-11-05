@@ -25,7 +25,7 @@ const TeamSchema = new mongoose.Schema({
   modifiedDate: {
     type: Date,
   },
-}, { autoCreate: true });
+});
 
 TeamSchema.set('toJSON', {
   transform: toJSON

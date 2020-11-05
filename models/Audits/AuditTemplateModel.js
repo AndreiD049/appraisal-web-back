@@ -60,7 +60,7 @@ const AuditTemplateSchema = new mongoose.Schema({
   modifiedDate: {
     type: Date,
   },
-}, { autoCreate: true });
+});
 
 AuditTemplateSchema.set('toJSON', {
   transform: toJSON,
