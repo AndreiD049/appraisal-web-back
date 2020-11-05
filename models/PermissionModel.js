@@ -50,7 +50,7 @@ const PermissionSchema = new mongoose.Schema({
   modifiedDate: {
     type: Date,
   },
-}, { autoCreate: true });
+});
 
 PermissionSchema.set('toJSON', {
   transform: toJSON,

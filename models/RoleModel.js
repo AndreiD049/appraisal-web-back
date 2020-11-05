@@ -36,7 +36,7 @@ const RoleSchema = new mongoose.Schema({
   modifiedDate: {
     type: Date,
   },
-}, { autoCreate: true });
+});
 
 RoleSchema.set('toJSON', {
   transform: toJSON

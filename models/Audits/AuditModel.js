@@ -82,7 +82,7 @@ const AuditSchema = new mongoose.Schema({
   modifiedDate: {
     type: Date,
   }
-}, { autoCreate: true });
+});
 
 AuditSchema.set('toJSON', {
   transform: toJSON
