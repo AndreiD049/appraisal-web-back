@@ -4,24 +4,25 @@ const { toJSON } = require('./dbutils');
 
 const validTypes = [
   'Role',
-  'User'
+  'User',
 ];
 
 const PermissionSchema = new mongoose.Schema({
   code: {
     type: mongoose.Types.ObjectId,
     required: true,
-    ref: 'PermissionCode'
+    ref: 'PermissionCode',
   },
   reference: {
     type: mongoose.Types.ObjectId,
     required: true,
-    refPath: 'permissionType'
+    refPath: 'permissionType',
   },
   organization: {
     type: mongoose.Types.ObjectId,
     required: true,
     ref: 'Organization',
+    index: true,
   },
   permissionType: {
     type: String,
@@ -31,8 +32,8 @@ const PermissionSchema = new mongoose.Schema({
   grants: [{
     type: String,
     default: [],
-    enum: validGrants
-  }],  
+    enum: validGrants,
+  }],
   createdUser: {
     type: mongoose.Types.ObjectId,
     required: true,
@@ -41,7 +42,7 @@ const PermissionSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -51,6 +52,8 @@ const PermissionSchema = new mongoose.Schema({
     type: Date,
   },
 });
+
+PermissionSchema.index({ permissionType: 1, reference: 1 });
 
 PermissionSchema.set('toJSON', {
   transform: toJSON,

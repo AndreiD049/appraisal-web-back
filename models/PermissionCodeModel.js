@@ -28,7 +28,7 @@ const PermissionCodeSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -40,7 +40,7 @@ const PermissionCodeSchema = new mongoose.Schema({
 });
 
 PermissionCodeSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
 
 const PermissionCodeModel = mongoose.model('PermissionCode', PermissionCodeSchema);

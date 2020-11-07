@@ -4,7 +4,7 @@ const { toJSON } = require('../dbutils');
 const AuditPointTemplateSchema = new mongoose.Schema({
   point: {
     type: String,
-    required: true
+    required: true,
   },
   createdUser: {
     type: mongoose.Types.ObjectId,
@@ -14,7 +14,7 @@ const AuditPointTemplateSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -36,12 +36,12 @@ const AuditTemplateSchema = new mongoose.Schema({
   organization: {
     type: mongoose.Types.ObjectId,
     required: true,
-    ref: 'Organization'
+    ref: 'Organization',
   },
   auditPoints: [{
     type: AuditPointTemplateSchema,
     required: false,
-    default: []
+    default: [],
   }],
   createdUser: {
     type: mongoose.Types.ObjectId,
@@ -51,7 +51,7 @@ const AuditTemplateSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -71,5 +71,5 @@ const AuditTemplateModel = mongoose.model('AuditTemplate', AuditTemplateSchema);
 module.exports = {
   AuditTemplateSchema,
   AuditTemplateModel,
-  AuditPointTemplateModel
+  AuditPointTemplateModel,
 };

@@ -5,5 +5,5 @@ const AuthorizationService = require('./AuthorizationService');
 module.exports = {
   RoleService,
   PermissionService,
-  AuthorizationService
+  AuthorizationService,
 };

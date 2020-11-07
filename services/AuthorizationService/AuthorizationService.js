@@ -1,4 +1,4 @@
-const PermissionService = require("./PermissionService");
+const PermissionService = require('./PermissionService');
 const UserService = require('../UserService');
 
 const AuthorizationService = {
@@ -7,15 +7,15 @@ const AuthorizationService = {
   Authorize: async (user, code, grant) => {
     const { id, role, organization } = await UserService.getUser(user.id);
     if (role) {
-      const rolePermissions = await PermissionService.getRolePermissionsByCode(role.id, code, organization.id)
-      if (rolePermissions.filter(r => r.grants.indexOf(grant) !== -1).length > 0) {
+      const rolePermissions = await PermissionService.getRolePermissionsByCode(role.id, code, organization.id);
+      if (rolePermissions.filter((r) => r.grants.indexOf(grant) !== -1).length > 0) {
         return true;
       }
     }
     // Get user's permissions and check if grant is there
     if (id) {
       const userPermissions = await PermissionService.getUserPermissionsByCode(id, code);
-      if (userPermissions.filter(r => r.grants.indexOf(grant) !== -1).length > 0) {
+      if (userPermissions.filter((r) => r.grants.indexOf(grant) !== -1).length > 0) {
         return true;
       }
     }
@@ -23,19 +23,19 @@ const AuthorizationService = {
   },
 
   /**
-   * Function used as express middleware, for checking if user has access 
+   * Function used as express middleware, for checking if user has access
    * to make the request before the request itself.
    * Function assumes user is attached to the request
    */
-  AuthorizeReq: function(code, grant, message='Access Denied!') {
-    return async function(req, res, next) {
+  AuthorizeReq(code, grant, message = 'Access Denied!') {
+    return async function result(req, res, next) {
       if (!(await AuthorizationService.Authorize(req.user, code, grant))) {
-        next(new Error(message + ` (code: ${code}, grant: ${grant})`));
+        next(new Error(`${message} (code: ${code}, grant: ${grant})`));
       } else {
         next();
       }
-    }
-  }
-}
+    };
+  },
+};
 
 module.exports = AuthorizationService;

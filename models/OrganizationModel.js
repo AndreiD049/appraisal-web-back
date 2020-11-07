@@ -15,7 +15,7 @@ const OrganizationSchema = new mongoose.Schema({
   },
   createdDate: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -27,7 +27,7 @@ const OrganizationSchema = new mongoose.Schema({
 });
 
 OrganizationSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
 
 const OrganizationModel = mongoose.model('Organization', OrganizationSchema);

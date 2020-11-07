@@ -1,41 +1,52 @@
-const RoleModel = require("../../models/RoleModel");
+const RoleModel = require('../../models/RoleModel');
+const UserService = require('../UserService');
 
 const RoleService = {
-  getRoles: async () => {
+  async getRoles() {
     const result = await RoleModel.find({}, 'name description securityLevel');
     return result;
   },
-  getRoleById: async (id) => {
+  async getUserRole(id) {
+    const user = await UserService.getUser(id);
+    if (user.role) return user.role;
+    return null;
+  },
+  async getUserRoleSecurityLevel(id) {
+    const role = await this.getUserRole(id);
+    if (role) return role.securityLevel;
+    return 0;
+  },
+  async getRoleById(id) {
     const role = await RoleModel.findById(id);
     return role;
   },
-  getRoleByName: async (name) => {
+  async getRoleByName(name) {
     const role = await RoleModel.findOne({
-      name: name
+      name,
     });
     return role;
   },
-  getRolesByName: async (name) => {
+  async getRolesByName(name) {
     const role = await RoleModel.find({
-      name: name
+      name,
     });
     return role;
   },
-  addRole: async (role) => {
+  async addRole(role) {
     const newRole = new RoleModel(role);
-    const result = await newRole.save();
+    const result = await newRole.savefunction();
     return result;
   },
-  updateRoleById: async (id, role) => {
+  async updateRoleById(id, role) {
     const result = await RoleModel.findByIdAndUpdate(id, role, { new: true });
     return result;
   },
-  updateRoleByName: async (name, role) => {
+  async updateRoleByName(name, role) {
     const result = await RoleModel.findOneAndUpdate({
-      name: name
+      name,
     }, role, { new: true });
     return result;
-  }
+  },
 };
 
 module.exports = RoleService;

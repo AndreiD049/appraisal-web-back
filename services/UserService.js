@@ -1,53 +1,64 @@
 const UserModel = require('../models/UserModel');
 const OrganizationModel = require('../models/OrganizationModel');
-const TeamService = require('./TeamService');
-const RoleModel = require('../models/RoleModel');
-const { indexOf } = require('../models/dbutils/validGrants');
 
 const UserService = {
-  populate: (doc) => {
-    return doc
-      .populate({ path: 'role', select: 'name securityLevel' })
-      .populate({ path: 'teams', select: 'name' })
-      .populate({ path: 'organizations', select: 'name' })
-      .populate({ path: 'organization', select: 'name' });
-  },
+  populate: (doc) => doc
+    .populate({ path: 'role', select: 'name securityLevel' })
+    .populate({ path: 'teams', select: 'name' })
+    .populate({ path: 'organizations', select: 'name' })
+    .populate({ path: 'organization', select: 'name' }),
 
-  getUser: async function(id) {
-    let user = await this.populate(UserModel.findById(id));
+  async getUser(id) {
+    const user = await this.populate(UserModel.findById(id));
     return user;
   },
 
-  getUserByUsername: async function(username) {
-    let user = await this.populate(UserModel.find({
-      username: username
+  async getUserByUsername(username) {
+    const user = await this.populate(UserModel.find({
+      username,
     }));
     return user.length ? user[0] : null;
   },
 
-  updateUser: async function(user) {
-    let updatedUser = await this.populate(UserModel.findByIdAndUpdate(user.id, user, { new: true }));
+  async updateUser(user) {
+    const updatedUser = await this
+      .populate(UserModel.findByIdAndUpdate(user.id, user, { new: true }));
     return updatedUser;
   },
 
-  updateSelf: async function(user) {
-    delete user.organizations;
-    let updatedUser = await this.populate(UserModel.findByIdAndUpdate(user.id, user, { new: true }));
+  async updateSelf(user) {
+    const arg = user;
+    delete arg.organizations;
+    const updatedUser = await this
+      .populate(UserModel.findByIdAndUpdate(arg.id, arg, { new: true }));
     return updatedUser;
   },
 
-  addDefaultUser: async (id) => {
-    let newUser = new UserModel({
+  async getUserRoleSecurityLevel(user) {
+    const dbUser = await this.getUser(user.id);
+    return dbUser && dbUser.role ? dbUser.role.securityLevel : 0;
+  },
+
+  async addDefaultUser(id) {
+    const newUser = new UserModel({
       username: id,
     });
-    return await newUser.save();
+    return newUser.save();
   },
 
-  getCurrentUserOrganizations: async (user) => {
+  async getCurrentUserOrganizations(user) {
     const dbUser = await UserModel.findById(user.id);
     const result = await OrganizationModel.find({
-      _id: { $in: dbUser.organizations }
+      _id: { $in: dbUser.organizations },
     });
+    return result;
+  },
+
+  async getOrganizationUsers(user) {
+    const dbUser = await UserModel.findById(user.id);
+    const result = await this.populate(UserModel.find({
+      organizations: dbUser.organization,
+    }));
     return result;
   },
 
@@ -56,7 +67,7 @@ const UserService = {
    *    1. Users that have the same teams as the current user
    *    2. Returned users should have roles with lower securitylevel than ME
    */
-  getUserTeamMembers: async function(user) {
+  async getUserTeamMembers(user) {
     const dbUser = await this.getUser(user.id);
     if (!dbUser.role || !dbUser.organization) {
       return [];
@@ -67,33 +78,33 @@ const UserService = {
           from: 'roles',
           localField: 'role',
           foreignField: '_id',
-          as: 'roleObj'
-        }
+          as: 'roleObj',
+        },
       },
       {
         $match: {
           teams: { $in: dbUser.teams },
           organizations: dbUser.organization._id,
-          'roleObj.securityLevel': { $lt: dbUser.role.securityLevel }
-        }
+          'roleObj.securityLevel': { $lt: dbUser.role.securityLevel },
+        },
       },
       {
         $addFields: {
-          'id': '$_id'
-        }
+          id: '$_id',
+        },
       },
       {
         $project: {
-          '_id': 0,
-          'roleObj': 0
-        }
-      }
+          _id: 0,
+          roleObj: 0,
+        },
+      },
     ]);
-    const result = await UserModel.populate(members, {path: 'teams organizations organization role', select: 'name'});
+    const result = await UserModel.populate(members, { path: 'teams organizations organization role', select: 'name' });
     return result;
   },
 
-  getTeamMembersSameLevel: async function(user) {
+  async getUserTeamMembersSameLevel(user) {
     const dbUser = await this.getUser(user.id);
     if (!dbUser.role || !dbUser.organization) {
       return [];
@@ -104,43 +115,43 @@ const UserService = {
           from: 'roles',
           localField: 'role',
           foreignField: '_id',
-          as: 'roleObj'
-        }
+          as: 'roleObj',
+        },
       },
       {
         $match: {
           teams: { $in: dbUser.teams },
           organizations: dbUser.organization._id,
-          'roleObj.securityLevel': { $eq: dbUser.role.securityLevel }
-        }
+          'roleObj.securityLevel': { $eq: dbUser.role.securityLevel },
+        },
       },
       {
         $addFields: {
-          'id': '$_id'
-        }
+          id: '$_id',
+        },
       },
       {
         $project: {
-          '_id': 0,
-          'roleObj': 0
-        }
-      }
+          _id: 0,
+          roleObj: 0,
+        },
+      },
     ]);
-    const result = await UserModel.populate(members, {path: 'teams organizations organization role', select: 'name'});
+    const result = await UserModel.populate(members, { path: 'teams organizations organization role', select: 'name' });
     return result;
   },
 
   /**
    * I want to be able to get all the users without any organization
    */
-  getNewcomers: async function() {
+  async getNewcomers() {
     const users = await UserModel.find({
-        $or: [
-          { role: null }, 
-          { teams: { $exists: true, $eq: [] }}, 
-          { organizations: { $exists: true, $eq: [] }}, 
-        ]
-      }).populate({path: 'teams organizations organization role', select: 'name'});
+      $or: [
+        { role: null },
+        { teams: { $exists: true, $eq: [] } },
+        { organizations: { $exists: true, $eq: [] } },
+      ],
+    }).populate({ path: 'teams organizations organization role', select: 'name' });
     return users || [];
   },
 
@@ -150,24 +161,25 @@ const UserService = {
    *  2. And if he is in at least one of my organizations
    *  3. If he is not a part of any organizations
    */
-  isTeamMember: async function(curentUser, memberId) {
-    const dbUser = await UserModel.findById(curentUser.id);
-    if (dbUser.id === memberId)
-      return true;
-    const newComers = (await this.getNewcomers()).map(m => m.id.toString());
-    if (newComers.indexOf(memberId) !== -1)
-      return true;
-    const teammembers = (await this.getUserTeamMembers(dbUser)).map(m => m.id.toString());
-    return teammembers.indexOf(memberId) !== -1;
+  async isTeamMember(askingUser, targetUser) {
+    const dbUser = await UserModel.findById(askingUser.id);
+    if (dbUser.id === targetUser) return true;
+    const newComers = (await this.getNewcomers()).map((m) => m.id.toString());
+    if (newComers.indexOf(targetUser) !== -1) return true;
+    const teammembers = (await this.getUserTeamMembers(dbUser)).map((m) => m.id.toString());
+    return teammembers.indexOf(targetUser) !== -1;
   },
 
-  isSameLevel: async function(curentUser, memberId) {
-    const dbUser = await UserModel.findById(curentUser.id);
-    if (dbUser.id === memberId)
-      return true;
-    const teammembers = (await this.getTeamMembersSameLevel(dbUser)).map(m => m.id.toString());
-    return teammembers.indexOf(memberId) !== -1;
-  }
+  async compareSecurityLevels(askingUser, targetUser) {
+    const [slAsking, slTarget] = await Promise.all([
+      this.getUserRoleSecurityLevel(askingUser),
+      this.getUserRoleSecurityLevel(targetUser),
+    ]);
+    if (slAsking < slTarget) return -1;
+    if (slAsking === slTarget) return 0;
+    return 1;
+  },
+
 };
 
 module.exports = UserService;

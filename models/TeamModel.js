@@ -16,7 +16,7 @@ const TeamSchema = new mongoose.Schema({
   },
   createdDate: {
     type: Date,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -28,7 +28,7 @@ const TeamSchema = new mongoose.Schema({
 });
 
 TeamSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
 
 const TeamModel = mongoose.model('Team', TeamSchema);

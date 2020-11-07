@@ -8,8 +8,7 @@ const { getTemplateFile } = require('../../services/Reporting/ReportTemplateServ
 
 // before each requestm check if there is a user
 reportingRouter.use(async (req, res, next) => {
-  if (!req.user)
-    next(new error("user is not attached to the request"));
+  if (!req.user) next(new error('user is not attached to the request'));
   next();
 });
 
@@ -23,7 +22,7 @@ reportingRouter.get('/', AuthorizeReq('REPORTS', 'read'), async (req, res, next)
       const fs = require('fs');
       const filename = path.join(os.tmpdir(), `${req.user.id}-result.docx`);
       fs.writeFileSync(filename, result);
-      res.download(filename, 'report-carbone.docx')
+      res.download(filename, 'report-carbone.docx');
     });
   } catch (err) {
     next(err);

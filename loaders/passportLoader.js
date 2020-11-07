@@ -1,16 +1,16 @@
 const passport = require('passport');
-const {OIDCStrategy} = require('passport-azure-ad');
+const { OIDCStrategy } = require('passport-azure-ad');
 const session = require('express-session');
 const MongoStore = require('connect-mongo')(session);
 const mongoose = require('mongoose');
 const config = require('../config');
 const UserService = require('../services/UserService');
 
-const init = async ({app}) => {
+const init = async ({ app }) => {
   app.store = new MongoStore({
     mongooseConnection: mongoose.connection,
-    ttl: 5 * 24 * 60 * 60
-  })
+    ttl: 5 * 24 * 60 * 60,
+  });
 
   app.use(session({
     secret: config.creds.clientSecret,
@@ -20,15 +20,15 @@ const init = async ({app}) => {
     cookie: {
       sameSite: false,
       maxAge: 5 * 24 * 60 * 60 * 1000,
-      domain: config.creds.domain
-    }
-  }))
+      domain: config.creds.domain,
+    },
+  }));
 
-  passport.serializeUser(function(user, done) {
+  passport.serializeUser((user, done) => {
     done(null, user.oid);
   });
 
-  passport.deserializeUser(function(oid, done) {
+  passport.deserializeUser((oid, done) => {
     app.store.get(oid, async (err, session) => {
       if (err) {
         done(err, null);
@@ -54,11 +54,11 @@ const init = async ({app}) => {
     loggingLevel: 'debug',
     nonceLifetime: null,
     nonceMaxAmount: 5,
-    clockSkew: null
-  }, 
-  async function(iss, sub, profile, accessToken, refreshToken, done) {
+    clockSkew: null,
+  },
+  (async (iss, sub, profile, accessToken, refreshToken, done) => {
     if (!profile.oid) {
-      return done(new Error("No oid found"), null);
+      return done(new Error('No oid found'), null);
     }
     // before attaching it to the req, add the info from mongo db
     let dbUser = await UserService.getUserByUsername(profile._json.preferred_username);
@@ -67,18 +67,20 @@ const init = async ({app}) => {
       dbUser = await UserService.addDefaultUser(profile._json.preferred_username);
     }
     dbUser = dbUser.toJSON();
-    let sessionUser = { oid: profile.oid, displayName: profile.displayName, name: profile.name, ...dbUser};
-    process.nextTick(function () {
+    const sessionUser = {
+      oid: profile.oid, displayName: profile.displayName, name: profile.name, ...dbUser,
+    };
+    process.nextTick(() => {
       app.store.set(profile.oid, sessionUser, (err) => {
         if (err) {
           return done(err, null);
         }
         return done(null, sessionUser);
-      })
+      });
     });
-  }));
+  })));
   app.use(passport.initialize());
   app.use(passport.session());
-}
+};
 
-module.exports = { init }
+module.exports = { init };

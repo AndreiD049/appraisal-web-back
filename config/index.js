@@ -1,4 +1,5 @@
 const dotenv = require('dotenv');
+
 dotenv.config();
 
 module.exports = {
@@ -17,6 +18,6 @@ module.exports = {
     tenantId: process.env.tenantId,
     destroySessionUrl: process.env.destroySessionUrl,
     issuer: process.env.issuer.split(','),
-    domain: process.env.domain
-  }
-}
+    domain: process.env.domain,
+  },
+};
