@@ -14,9 +14,9 @@ appraisalPeriodsRouter.get('/', AuthorizeReq('APPRAISAL PERIODS', 'read'), async
 });
 
 // Create a new period
-appraisalPeriodsRouter.post('/', AuthorizeReq('APPRAISAL PERIODS', 'create'), async(req, res, next) => {
+appraisalPeriodsRouter.post('/', AuthorizeReq('APPRAISAL PERIODS', 'create'), async (req, res, next) => {
   try {
-    const body = req.body;
+    const { body } = req;
     const period = await (await AppraisalService.createPeriod(req.user, body))
       .populate({ path: 'createdUser', select: 'username' })
       .execPopulate();
@@ -24,17 +24,17 @@ appraisalPeriodsRouter.post('/', AuthorizeReq('APPRAISAL PERIODS', 'create'), as
   } catch (err) {
     next(err);
   }
-})
+});
 
 // Get period details, includeing all items
 appraisalPeriodsRouter.get('/:id', AuthorizeReq('APPRAISAL PERIODS', 'read'), async (req, res, next) => {
   try {
-    const periodId = req.params['id'];
+    const periodId = req.params.id;
 
     const period = (await AppraisalService.getPeriodById(periodId)).toJSON();
     // Check if current user is within the period users
     // If not, it's the first time user accesses the period
-    if (!period.users.find(u => String(u) === String(req.user.id))) {
+    if (!period.users.find((u) => String(u) === String(req.user.id))) {
       await AppraisalService.updatePeriod(period.id, { users: period.users.concat(req.user.id) });
       // check if there are any orphan appraisal items to add them here
       await AppraisalService.addOrphanUserItemsToPeriod(period.id, req.user.id);
@@ -53,7 +53,7 @@ appraisalPeriodsRouter.get('/:id', AuthorizeReq('APPRAISAL PERIODS', 'read'), as
 // Finish period and all it's items for the current user
 appraisalPeriodsRouter.post('/:id/finish', AuthorizeReq('APPRAISAL PERIODS', 'finish'), async (req, res, next) => {
   try {
-    const periodId = req.params['id'];
+    const periodId = req.params.id;
     const result = await AppraisalService.finishPeriod(periodId, req.user);
     if (!result) {
       res.status(400).end();
@@ -69,7 +69,7 @@ appraisalPeriodsRouter.post('/:id/finish', AuthorizeReq('APPRAISAL PERIODS', 'fi
 // get single item by id
 appraisalPeriodsRouter.get('/:periodId/items/:id', AuthorizeReq('APPRAISAL DETAILS', 'read'), async (req, res, next) => {
   try {
-    const itemId = req.params['id'];
+    const itemId = req.params.id;
 
     res.json(await AppraisalService.getItemById(itemId));
   } catch (err) {
@@ -82,20 +82,15 @@ appraisalPeriodsRouter.get('/:periodId/items/:id', AuthorizeReq('APPRAISAL DETAI
  */
 appraisalPeriodsRouter.post('/:id/items', AuthorizeReq('APPRAISAL DETAILS', 'create'), async (req, res, next) => {
   try {
-    const periodId = req.params["id"];
-    const body = req.body;
+    const periodId = req.params.id;
+    const { body } = req;
     // Validate body
-    if (!body.type)
-      next(new Error('Type should be specified'));
-    else if (!body.status)
-      next(new Error('Status should be specified'));
-    else if (!body.content)
-      next(new Error('Content cannot be null'));
-    else if (!body.periodId)
-      next(new Error('Period Id is blank'));
-    else if (body.periodId !== periodId)
-      throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
-    
+    if (!body.type) next(new Error('Type should be specified'));
+    else if (!body.status) next(new Error('Status should be specified'));
+    else if (!body.content) next(new Error('Content cannot be null'));
+    else if (!body.periodId) next(new Error('Period Id is blank'));
+    else if (body.periodId !== periodId) throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
+
     // Insert item
     res.json(await AppraisalService.addItemToPeriod(periodId, body, req.user));
   } catch (err) {
@@ -107,16 +102,14 @@ appraisalPeriodsRouter.post('/:id/items', AuthorizeReq('APPRAISAL DETAILS', 'cre
 // Modified an item and returns the modified version
 appraisalPeriodsRouter.put('/:periodId/items/:id', AuthorizeReq('APPRAISAL DETAILS', 'update'), async (req, res, next) => {
   try {
-    const itemId = req.params['id'];
-    const periodId = req.params['periodId'];
-    const body = req.body;
+    const itemId = req.params.id;
+    const { periodId } = req.params;
+    const { body } = req;
 
     // Validate request
-    if (!body.content && !body.type && !body.status)
-      throw new Error('No items found to update: Content or type or status.');
-    else if (body.periodId !== periodId)
-      throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
-    
+    if (!body.content && !body.type && !body.status) throw new Error('No items found to update: Content or type or status.');
+    else if (body.periodId !== periodId) throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
+
     // Update item and return updated version
     res.json(await AppraisalService.updateItem(itemId, body));
   } catch (err) {
@@ -127,9 +120,8 @@ appraisalPeriodsRouter.put('/:periodId/items/:id', AuthorizeReq('APPRAISAL DETAI
 // DELETE /api/periods/:periodId/items/:id
 // Deletes an item from database
 appraisalPeriodsRouter.delete('/:periodId/items/:id', AuthorizeReq('APPRAISAL DETAILS', 'delete'), async (req, res, next) => {
-  try 
-  {
-    const itemId = req.params['id'];
+  try {
+    const itemId = req.params.id;
     // Delete item and return the deleted item
     await AppraisalService.deleteItem(itemId, req.user);
     res.status(204).end();
@@ -146,45 +138,41 @@ appraisalPeriodsRouter.delete('/:periodId/items/:id', AuthorizeReq('APPRAISAL DE
 
 appraisalPeriodsRouter.get('/:periodId/users/:userId', AuthorizeReq('APPRAISAL DETAILS - OTHER USERS', 'read'), async (req, res, next) => {
   try {
-    const periodId = req.params['periodId'];
-    const userId = req.params['userId'];
+    const { periodId } = req.params;
+    const { userId } = req.params;
 
     // make sure we are allowed to get this users details
-    if (!(await UserService.isTeamMember(req.user, userId)))
-      throw new Error(`Cannot get user details. '${userId}' is not on your team`);
+    if (!(await UserService.isTeamMember(req.user, userId))) throw new Error(`Cannot get user details. '${userId}' is not on your team`);
 
     const user = await UserService.getUser(userId);
-    if (user === null)
-      throw new Error(`User '${userId}' was not found`);
+    if (user === null) throw new Error(`User '${userId}' was not found`);
 
     const period = (await AppraisalService.getPeriodById(periodId)).toJSON();
 
     // Only get items of user
     const items = (await AppraisalService.getUserItemsByPeriodId(periodId, user.id))
-      .map(item => item.toJSON());
+      .map((item) => item.toJSON());
     period.items = items;
     res.json(period);
   } catch (err) {
     next(err);
   }
-}),
+});
 
 appraisalPeriodsRouter.get('/:periodId/users/:userId/items', AuthorizeReq('APPRAISAL DETAILS - OTHER USERS', 'read'), async (req, res, next) => {
   try {
-    const periodId = req.params["periodId"];
-    const userId = req.params["userId"];
+    const { periodId } = req.params;
+    const { userId } = req.params;
     const user = await UserService.getUser(userId);
     // Validate
-    if (user === null)
-      throw new Error(`User '${userId}' was not found`);
-    if (!(await UserService.isTeamMember(req.user, userId)))
-      throw new Error(`User '${userId}' is not in your team`);
+    if (user === null) throw new Error(`User '${userId}' was not found`);
+    if (!(await UserService.isTeamMember(req.user, userId))) throw new Error(`User '${userId}' is not in your team`);
     // Get the period with current id
     const period = (await AppraisalService.getPeriodById(periodId)).toJSON();
 
     // Only get items of current user
     const items = (await AppraisalService.getUserItemsByPeriodId(periodId, user.id))
-      .map(item => item.toJSON());
+      .map((item) => item.toJSON());
     period.items = items;
     res.json(period);
   } catch (err) {
@@ -197,23 +185,18 @@ appraisalPeriodsRouter.get('/:periodId/users/:userId/items', AuthorizeReq('APPRA
  */
 appraisalPeriodsRouter.post('/:id/users/:userId/items', AuthorizeReq('APPRAISAL DETAILS - OTHER USERS', 'create'), async (req, res, next) => {
   try {
-    const periodId = req.params['id'];
-    const userId = req.params['userId']
-    const body = req.body;
+    const periodId = req.params.id;
+    const { userId } = req.params;
+    const { body } = req;
     // add the subject user id to the body
     body.user = userId;
     // Validate body
-    if (!body.type)
-      throw new Error('Type should be specified');
-    else if (!body.status)
-      throw new Error('Status should be specified');
-    else if (!body.content)
-      throw new Error('Content cannot be null');
-    else if (!body.periodId)
-      throw new Error('Period Id is blank');
-    else if (body.periodId !== periodId)
-      throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
-    
+    if (!body.type) throw new Error('Type should be specified');
+    else if (!body.status) throw new Error('Status should be specified');
+    else if (!body.content) throw new Error('Content cannot be null');
+    else if (!body.periodId) throw new Error('Period Id is blank');
+    else if (body.periodId !== periodId) throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
+
     // Insert item
     res.json(await AppraisalService.addItemToPeriodOfMember(periodId, body, req.user));
   } catch (err) {
@@ -225,18 +208,15 @@ appraisalPeriodsRouter.post('/:id/users/:userId/items', AuthorizeReq('APPRAISAL 
 // Update an item for another user
 appraisalPeriodsRouter.put('/:periodId/users/:userId/items/:id', AuthorizeReq('APPRAISAL DETAILS - OTHER USERS', 'update'), async (req, res, next) => {
   try {
-    const itemId = req.params['id'];
-    const userId = req.params['userId'];
-    const periodId = req.params['periodId'];
-    const body = req.body;
+    const itemId = req.params.id;
+    const { userId } = req.params;
+    const { periodId } = req.params;
+    const { body } = req;
     // Validate request
-    if (!body.content && !body.type && !body.status)
-      throw new Error('No items found to update: Content or type or status.')
-    if (body.periodId !== periodId)
-      throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
-    if (body.user !== userId)
-      throw new Error(`Request body and query have different user ids: ${body.user} vs ${userId}`);
-    
+    if (!body.content && !body.type && !body.status) throw new Error('No items found to update: Content or type or status.');
+    if (body.periodId !== periodId) throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
+    if (body.user !== userId) throw new Error(`Request body and query have different user ids: ${body.user} vs ${userId}`);
+
     // Update item and return updated version
     res.json(await AppraisalService.updateItemOfMember(itemId, body, req.user));
   } catch (err) {
@@ -244,23 +224,18 @@ appraisalPeriodsRouter.put('/:periodId/users/:userId/items/:id', AuthorizeReq('A
   }
 });
 
-
 // DELETE /api/periods/:id/users/:userId/items/:itemId
 // Delete an item of another user
 appraisalPeriodsRouter.delete('/:periodId/users/:userId/items/:id', AuthorizeReq('APPRAISAL DETAILS - OTHER USERS', 'delete'), async (req, res, next) => {
-  try 
-  {
-    const itemId = req.params['id'];
-    const userId = req.params['userId'];
-    const periodId = req.params['periodId'];
+  try {
+    const itemId = req.params.id;
+    const { userId } = req.params;
+    const { periodId } = req.params;
     // Delete item and return the deleted item
     const item = (await AppraisalService.getItemById(itemId)).toJSON();
-    if (!item)
-      throw new Error(`Item ${itemId} was not found`);
-    if (String(item.periodId) !== periodId)
-      throw new Error(`Request body and query have different periodId: ${item.periodId} vs ${periodId}`);
-    else if (String(item.user) !== userId)
-      throw new Error(`Request body and query have different user ids: ${item.user} vs ${userId}`);
+    if (!item) throw new Error(`Item ${itemId} was not found`);
+    if (String(item.periodId) !== periodId) throw new Error(`Request body and query have different periodId: ${item.periodId} vs ${periodId}`);
+    else if (String(item.user) !== userId) throw new Error(`Request body and query have different user ids: ${item.user} vs ${userId}`);
     await AppraisalService.deleteItemOfMember(itemId, req.user);
     res.status(204).end();
   } catch (err) {

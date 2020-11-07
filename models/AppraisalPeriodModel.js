@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const { toJSON } = require('./dbutils');
 
-const validStatuses = ['Active', 'Finished']
+const validStatuses = ['Active', 'Finished'];
 
 const AppraisalPeriodSchema = new mongoose.Schema({
   name: {
@@ -13,7 +13,7 @@ const AppraisalPeriodSchema = new mongoose.Schema({
   status: {
     type: String,
     required: true,
-    enum: validStatuses
+    enum: validStatuses,
   },
   organizationId: {
     type: mongoose.ObjectId,
@@ -21,7 +21,7 @@ const AppraisalPeriodSchema = new mongoose.Schema({
   },
   users: [{
     type: mongoose.Types.ObjectId,
-    default: []
+    default: [],
   }],
   createdUser: {
     type: mongoose.Types.ObjectId,
@@ -31,7 +31,7 @@ const AppraisalPeriodSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -43,9 +43,8 @@ const AppraisalPeriodSchema = new mongoose.Schema({
 });
 
 AppraisalPeriodSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
-
 
 const AppraisalPeriodModel = mongoose.model('AppraisalPeriod', AppraisalPeriodSchema);
 

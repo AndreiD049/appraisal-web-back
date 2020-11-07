@@ -27,7 +27,7 @@ const RoleSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -39,7 +39,7 @@ const RoleSchema = new mongoose.Schema({
 });
 
 RoleSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
 
 const RoleModel = mongoose.model('Role', RoleSchema);

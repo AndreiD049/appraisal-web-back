@@ -1,5 +1,5 @@
-const attachCurrentUser = require('./attachCurrentUserId');
+const cacheRequest = require('./cacheRequest');
 
 module.exports = {
-  attachCurrentUser
+  cacheRequest,
 };

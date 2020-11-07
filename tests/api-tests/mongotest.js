@@ -9,8 +9,7 @@ const { AuditService } = require('../../services/Audit');
 const AuditModel = require('../../models/Audits/AuditModel');
 
 async function run() {
-  try
-  {
+  try {
     console.log(config.MONGODB_URI);
     await mongoose.connect('mongodb://localhost:27017/adminTools', {
       useNewUrlParser: true,
@@ -27,8 +26,7 @@ async function run() {
     // })
     // AuditService.deleteAudit('5f99c821da3b68034c261f29');
     AuditService.updateAudit('5f99c85f579c8c427c19335e', { type: 'Use' });
-  } catch (e)
-  {
+  } catch (e) {
     console.error(e);
   }
 }

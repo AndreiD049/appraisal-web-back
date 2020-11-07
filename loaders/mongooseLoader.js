@@ -2,8 +2,7 @@ const mongoose = require('mongoose');
 const config = require('../config');
 
 const init = async () => {
-  try
-  {
+  try {
     await mongoose.connect(config.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
@@ -11,12 +10,11 @@ const init = async () => {
       useFindAndModify: false,
     });
     console.log('Succesfully connected to MONGODB');
-  } catch (e)
-  {
-    console.error("Error connecting to mongodb");
+  } catch (e) {
+    console.error('Error connecting to mongodb');
   }
 };
 
 module.exports = {
-  init
+  init,
 };

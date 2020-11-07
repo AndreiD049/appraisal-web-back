@@ -19,15 +19,14 @@ const ReportTemplateSchema = new mongoose.Schema({
   },
   template: {
     type: Buffer,
-    required: true
+    required: true,
   },
   organizationId: {
     type: mongoose.Types.ObjectId,
-    required: true
-  }
+    required: true,
+  },
 });
 
 const ReportTemplateModel = mongoose.model('ReportTempalte', ReportTemplateSchema);
 
 module.exports = ReportTemplateModel;
-

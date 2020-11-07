@@ -1,10 +1,9 @@
 const PermissionModel = require('../../models/PermissionModel');
 const PermissionCodeModel = require('../../models/PermissionCodeModel');
-const RoleModel = require('../../models/RoleModel');
-const UserService = require('../../services/UserService');
+const UserService = require('../UserService');
 
 const PermissionService = {
-  populate: function(doc) {
+  populate(doc) {
     return doc
       .populate({ path: 'code', select: 'code description' })
       .populate({ path: 'organization', select: 'name' });
@@ -16,7 +15,7 @@ const PermissionService = {
   },
   getPermissionCode: async (code) => {
     const result = await PermissionCodeModel.find({
-      code: code
+      code,
     }, 'code description');
     return result;
   },
@@ -27,28 +26,28 @@ const PermissionService = {
   },
   updatePermissionCode: async (code, updatedObject) => {
     const result = await PermissionCodeModel.findOneAndUpdate({
-      code: code
+      code,
     }, updatedObject, { new: true });
     return result;
   },
   deletePermissionCode: async (code) => {
     const result = await PermissionCodeModel.findOneAndDelete({
-      code: code
+      code,
     });
     return result;
   },
   // Permissions
-  getPermissionById: async function(id) {
-    const result = await this.populate(PermissionModel.findById(id, 
+  async getPermissionById(id) {
+    const result = await this.populate(PermissionModel.findById(id,
       'code reference permissionType grants organization'));
     return result;
   },
-  getPermissionsByCode: async function(name) {
+  async getPermissionsByCode(name) {
     const code = await PermissionCodeModel.findOne({
-      code: name
+      code: name,
     });
     const result = await this.populate(PermissionModel.find({
-      code: code.id
+      code: code.id,
     }, 'code reference permissionType grants organization'));
     return result;
   },
@@ -60,10 +59,10 @@ const PermissionService = {
   updatePermissionById: async (id, permission) => {
     const result = await PermissionModel.findByIdAndUpdate(id, permission, { new: true });
     return result;
-  }, 
+  },
   updatePermissionByCode: async (name, permission) => {
     const result = await PermissionModel.findOneAndUpdate({
-      name: name,
+      name,
     }, permission, { new: true });
     return result;
   },
@@ -72,7 +71,7 @@ const PermissionService = {
     return result;
   },
   // User Permissions
-  getUserPermissions: async function(id) {
+  async getUserPermissions(id) {
     const dbUser = await UserService.getUser(id);
     if (!dbUser.organization) {
       return [];
@@ -84,22 +83,22 @@ const PermissionService = {
     }, 'code reference permissionType grants organization'));
     return result || [];
   },
-  getUserOrganizationMembersPermissions: async function(id) {
+  async getUserOrganizationMembersPermissions(id) {
     const dbUser = await UserService.getUser(id);
     const users = await UserService.getUserTeamMembers(dbUser);
-    const ids = users.map(u => u.id).concat(dbUser.id);
+    const ids = users.map((u) => u.id).concat(dbUser.id);
     const result = await this.populate(PermissionModel.find({
       permissionType: 'User',
       reference: { $in: ids },
       organization: dbUser.organization.id,
     }, 'code reference permissionType grants organization')
-    .populate({ path: 'reference', select: 'username' }));
+      .populate({ path: 'reference', select: 'username' }));
     return result;
   },
-  getUserPermissionsByCode: async function(id, code) {
+  async getUserPermissionsByCode(id, code) {
     const dbUser = await UserService.getUser(id);
     const codeDb = await PermissionCodeModel.findOne({
-      code: code
+      code,
     });
     const result = await this.populate(PermissionModel.find({
       code: codeDb.id,
@@ -111,36 +110,36 @@ const PermissionService = {
     return result;
   },
   // Roles
-  getAllRolesPermissions: async function(orgId) {
+  async getAllRolesPermissions(orgId) {
     const result = await this.populate(PermissionModel.find({
       permissionType: 'Role',
-      organization: orgId
+      organization: orgId,
     }, 'code reference permissionType grants organization')
-    .populate({ path: 'reference', select: 'name' }));
+      .populate({ path: 'reference', select: 'name' }));
     return result || [];
   },
-  getRolePermissions: async function(id, orgId) {
+  async getRolePermissions(id, orgId) {
     const result = await this.populate(PermissionModel.find({
       permissionType: 'Role',
       reference: id,
-      organization: orgId
+      organization: orgId,
     }, 'code reference permissionType grants organization')
-    .populate({ path: 'reference', select: 'name' }));
+      .populate({ path: 'reference', select: 'name' }));
     return result || [];
   },
-  getRolePermissionsByCode: async function(id, code, orgId) {
+  async getRolePermissionsByCode(id, code, orgId) {
     const codeDb = await PermissionCodeModel.findOne({
-      code: code
+      code,
     });
     const result = await this.populate(PermissionModel.find({
       code: codeDb.id,
       permissionType: 'Role',
       reference: id,
-      organization: orgId
+      organization: orgId,
     }, 'code reference permissionType grants organization')
-    .populate({ path: 'reference', select: 'name' }));
+      .populate({ path: 'reference', select: 'name' }));
     return result || [];
   },
-}
+};
 
 module.exports = PermissionService;

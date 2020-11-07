@@ -3,5 +3,5 @@ const ReportTemplateService = require('./ReportTemplateService');
 
 module.exports = {
   ReportingService,
-  ReportTemplateService
-}
+  ReportTemplateService,
+};

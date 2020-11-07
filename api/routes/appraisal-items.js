@@ -13,16 +13,11 @@ appraisalItemsRouter.get('/', AuthorizeReq('APPRAISAL DETAILS', 'read'), async (
 
 appraisalItemsRouter.post('/', AuthorizeReq('APPRAISAL DETAILS', 'create'), async (req, res, next) => {
   try {
-    const body = req.body;
+    const { body } = req;
     body.periodId = null;
     // Validate body
-    if (!body.type)
-      next(new Error('Type should be specified'));
-    else if (!body.status)
-      next(new Error('Status should be specified'));
-    else if (!body.content)
-      next(new Error('Content cannot be null'));
-    
+    if (!body.type) { next(new Error('Type should be specified')); } else if (!body.status) { next(new Error('Status should be specified')); } else if (!body.content) { next(new Error('Content cannot be null')); }
+
     // Insert item
     res.json(await AppraisalService.addItem(body, req.user));
   } catch (err) {
@@ -32,9 +27,9 @@ appraisalItemsRouter.post('/', AuthorizeReq('APPRAISAL DETAILS', 'create'), asyn
 
 appraisalItemsRouter.put('/:id', AuthorizeReq('APPRAISAL DETAILS', 'update'), async (req, res, next) => {
   try {
-    const id = req.params['id'];
-    const body = req.body;
-    
+    const { id } = req.params;
+    const { body } = req;
+
     // Insert item
     res.json(await AppraisalService.updateItem(id, body));
   } catch (err) {
@@ -44,7 +39,7 @@ appraisalItemsRouter.put('/:id', AuthorizeReq('APPRAISAL DETAILS', 'update'), as
 
 appraisalItemsRouter.delete('/:id', AuthorizeReq('APPRAISAL DETAILS', 'delete'), async (req, res, next) => {
   try {
-    const id = req.params['id'];
+    const { id } = req.params;
     // Insert item
     await AppraisalService.deleteItem(id);
     res.status(204).end();

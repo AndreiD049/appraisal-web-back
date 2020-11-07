@@ -9,6 +9,7 @@ const UserSchema = new mongoose.Schema({
     minlength: 6,
     maxlength: 50,
     match: /[a-zA-Z1-9]+/,
+    index: true,
   },
   fullname: {
     type: String,
@@ -19,13 +20,13 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: mongoose.Types.ObjectId,
-    ref: 'Role'
+    ref: 'Role',
   },
   teams: [{
     type: mongoose.Types.ObjectId,
     required: false,
     ref: 'Team',
-  }],  
+  }],
   organization: {
     type: mongoose.Types.ObjectId,
     required: false,
@@ -35,11 +36,12 @@ const UserSchema = new mongoose.Schema({
     type: mongoose.Types.ObjectId,
     required: false,
     ref: 'Organization',
-  }]
+    index: true,
+  }],
 });
 
 UserSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
 
 const UserModel = mongoose.model('User', UserSchema);

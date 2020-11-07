@@ -5,7 +5,7 @@ const { ActionPointSchema } = require('./ActionPointSchema');
 const AuditPointsSchema = new mongoose.Schema({
   point: {
     type: String,
-    required: true
+    required: true,
   },
   checked: {
     type: Boolean,
@@ -15,7 +15,7 @@ const AuditPointsSchema = new mongoose.Schema({
   comment: {
     type: String,
     required: false,
-  }
+  },
 });
 
 const AuditSchema = new mongoose.Schema({
@@ -23,7 +23,7 @@ const AuditSchema = new mongoose.Schema({
     type: mongoose.Types.ObjectId,
     required: false,
     default: null,
-    ref: 'User'
+    ref: 'User',
   },
   auditSubject: {
     type: String,
@@ -32,33 +32,33 @@ const AuditSchema = new mongoose.Schema({
   userSubject: {
     type: mongoose.Types.ObjectId,
     required: false,
-    refPath: 'User'
+    refPath: 'User',
   },
   status: {
     type: String,
     required: true,
     default: 'New',
-    enum: ['New', 'InProgress', 'Executed', 'Finished']
+    enum: ['New', 'InProgress', 'Executed', 'Finished'],
   },
   type: {
     type: String,
     required: true,
-    enum: ['User', 'Procedure']
+    enum: ['User', 'Procedure'],
   },
   organization: {
     type: mongoose.Types.ObjectId,
     required: true,
-    ref: 'Organization'
+    ref: 'Organization',
   },
   auditTemplate: {
     type: mongoose.Types.ObjectId,
     required: false,
-    default: null
+    default: null,
   },
   auditPoints: [{
     type: AuditPointsSchema,
     required: false,
-    default: []
+    default: [],
   }],
   actionPoints: [{
     type: ActionPointSchema,
@@ -73,7 +73,7 @@ const AuditSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -81,11 +81,11 @@ const AuditSchema = new mongoose.Schema({
   },
   modifiedDate: {
     type: Date,
-  }
+  },
 });
 
 AuditSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
 
 const AuditModel = mongoose.model('Audit', AuditSchema);

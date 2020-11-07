@@ -2,57 +2,58 @@ const mongoose = require('mongoose');
 const { toJSON } = require('./dbutils');
 
 const validItemTypes = [
-  'Planned', 
-  'Achieved', 
+  'Planned',
+  'Achieved',
   'Training',
   'Training_Suggested',
   'SWOT_S',
   'SWOT_W',
   'SWOT_O',
-  'SWOT_T'
+  'SWOT_T',
 ];
 
 const validItemStatuses = [
   'Active',
   'Finished',
-  'InProgress'
+  'InProgress',
 ];
 
 const AppraisalItemSchema = new mongoose.Schema({
   type: {
     type: String,
     required: true,
-    enum: validItemTypes
+    enum: validItemTypes,
   },
   status: {
     type: String,
     required: true,
-    enum: validItemStatuses
+    enum: validItemStatuses,
   },
   content: {
     type: String,
-    required: true
+    required: true,
   },
   periodId: {
     type: mongoose.ObjectId,
     required: false,
     default: null,
     ref: 'AppraisalPeriod',
+    index: true,
   },
   organizationId: {
     type: mongoose.ObjectId,
-    required: true
+    required: true,
   },
   relatedItemId: {
     type: mongoose.ObjectId,
     required: false,
-    default: null
+    default: null,
   },
   user: {
     type: mongoose.Types.ObjectId,
     required: true,
     ref: 'User',
-  },  
+  },
   createdUser: {
     type: mongoose.Types.ObjectId,
     required: true,
@@ -61,7 +62,7 @@ const AppraisalItemSchema = new mongoose.Schema({
   createdDate: {
     type: Date,
     required: true,
-    default: Date.now
+    default: Date.now,
   },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
@@ -69,17 +70,17 @@ const AppraisalItemSchema = new mongoose.Schema({
   },
   modifiedDate: {
     type: Date,
-  }
+  },
 });
 
 AppraisalItemSchema.set('toJSON', {
-  transform: toJSON
+  transform: toJSON,
 });
 
 const AppraisalItemModel = mongoose.model('AppraisalItem', AppraisalItemSchema);
 const AppraisalItemView = mongoose.model('AppraisalItemsView', AppraisalItemSchema, 'AppraisalItemsView');
 
-module.exports = { 
+module.exports = {
   AppraisalItemModel,
-  AppraisalItemView
+  AppraisalItemView,
 };

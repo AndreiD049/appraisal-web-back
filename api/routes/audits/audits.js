@@ -2,11 +2,9 @@ const auditsRouter = require('express').Router();
 const { AuditService } = require('../../../services/Audit');
 const { AuthorizeReq } = require('../../../services/AuthorizationService').AuthorizationService;
 
-
 // before each requestm check if there is a user
 auditsRouter.use(async (req, res, next) => {
-  if (!req.user)
-    next(new error("user is not attached to the request"));
+  if (!req.user) next(new error('user is not attached to the request'));
   next();
 });
 
@@ -29,7 +27,7 @@ auditsRouter.get('/', AuthorizeReq('AUDITS', 'read'), async (req, res, next) => 
  */
 auditsRouter.post('/', AuthorizeReq('AUDITS', 'create'), async (req, res, next) => {
   try {
-    const body = req.body;
+    const { body } = req;
     body.createdUser = req.user.id;
     const audit = await AuditService.addAudit(body);
     res.json(audit);
@@ -44,8 +42,8 @@ auditsRouter.post('/', AuthorizeReq('AUDITS', 'create'), async (req, res, next) 
  */
 auditsRouter.put('/:id', AuthorizeReq('AUDITS', 'update'), async (req, res, next) => {
   try {
-    const body = req.body;
-    const id = req.params['id'];
+    const { body } = req;
+    const { id } = req.params;
 
     const result = await AuditService.updateAudit(id, body);
     res.json(result);
@@ -61,11 +59,10 @@ auditsRouter.put('/:id', AuthorizeReq('AUDITS', 'update'), async (req, res, next
  */
 auditsRouter.delete('/:id', AuthorizeReq('AUDITS', 'update'), async (req, res, next) => {
   try {
-    const id = req.params['id'];
+    const { id } = req.params;
 
     const result = await AuditService.deleteAudit(id);
-    if (result === null)
-      return res.status(404).end();
+    if (result === null) return res.status(404).end();
     res.status(204).end();
   } catch (err) {
     next(err);
