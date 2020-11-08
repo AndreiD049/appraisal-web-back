@@ -123,7 +123,6 @@ const ReportingService = {
       throw new Error('This is not a temp folder');
     }
     const dir = await fsPromises.readdir(folder);
-    const mongoose = require('mongoose');
     for (const file of dir) {
       await this.removeFile(path.join(folder, file));
     }

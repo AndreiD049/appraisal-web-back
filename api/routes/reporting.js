@@ -3,7 +3,6 @@ const { ReportingService, ReportTemplateService } = require('../../services/Repo
 const { AuthorizeReq } = require('../../services/AuthorizationService').AuthorizationService;
 const path = require('path');
 const os = require('os');
-const ReportTemplateModel = require('../../models/Reporting/ReportTemplateModel');
 const { getTemplateFile } = require('../../services/Reporting/ReportTemplateService');
 
 // before each requestm check if there is a user
