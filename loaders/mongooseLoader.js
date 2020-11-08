@@ -11,7 +11,7 @@ const init = async () => {
     });
     console.log('Succesfully connected to MONGODB');
   } catch (e) {
-    console.error('Error connecting to mongodb');
+    console.error('Error connecting to mongodb', e);
   }
 };
 
