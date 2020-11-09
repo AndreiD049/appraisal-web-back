@@ -13,8 +13,11 @@ settingsRouter.use(async (req, res, next) => {
 // GET /api/settings/users
 settingsRouter.get('/users', async (req, res, next) => {
   try {
-    const users = await UserService.getOrganizationUsers(req.user);
-    res.json(users);
+    const [users, newcomers] = await Promise.all([
+      UserService.getOrganizationUsers(req.user),
+      UserService.getNewcomers(),
+    ]);
+    res.json(users.concat(newcomers));
   } catch (err) {
     next(err);
   }
