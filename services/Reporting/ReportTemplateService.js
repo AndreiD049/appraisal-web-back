@@ -5,40 +5,31 @@ const { ReportTemplateModel } = require('../../models/Reporting');
 const UserService = require('../UserService');
 
 const ReportTemplateService = {
-  async addTemplateFromFile(name, filepath, user) {
+  async addTemplate(template, user) {
     const dbUser = await UserService.getUser(user.id);
-    const bytes = fs.readFileSync(filepath);
-    const result = await ReportTemplateModel.create({
-      name,
-      template: bytes,
-      filename: `${user.id}${path.extname(filepath)}`,
-      view: 'appraisalItems',
+    const dbTemplate = {
+      ...template,
       organizationId: dbUser.organization.id,
-    });
+      createdUser: dbUser.id,
+      createdDate: new Date(),
+    };
+    const result = await ReportTemplateModel.create(dbTemplate);
     return result;
   },
 
-  async addTemplateFromBytes(name, filename, bytes, user) {
-    const dbUser = await UserService.getUser(user.id);
-    const result = await ReportTemplateModel.create({
-      name,
-      template: bytes,
-      filename: `${user.id}${path.extname(filename)}`,
-      organizationId: dbUser.organization.id,
-    });
-    return result;
-  },
-
-  async getTemplateFile(name, user) {
+  /**
+   * @param {string} name
+   * @param {any} user
+   * Get template by name.
+   * Search the template in current user's organization/
+   */
+  async getTemplate(name, user) {
     const dbUser = await UserService.getUser(user.id);
     const template = await ReportTemplateModel.findOne({
       name,
       organizationId: dbUser.organization.id,
     });
-    const finalPath = path.join(os.tmpdir(), template.filename);
-    fs.writeFileSync(path.join(os.tmpdir(), template.filename), template.template);
-    console.log(finalPath);
-    return finalPath;
+    return template;
   },
 };
 
