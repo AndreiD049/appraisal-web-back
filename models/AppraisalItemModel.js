@@ -54,6 +54,10 @@ const AppraisalItemSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
+  complexity: {
+    type: Number,
+    default: 1,
+  },
   createdUser: {
     type: mongoose.Types.ObjectId,
     required: true,
@@ -78,9 +82,9 @@ AppraisalItemSchema.set('toJSON', {
 });
 
 const AppraisalItemModel = mongoose.model('AppraisalItem', AppraisalItemSchema);
-const AppraisalItemView = mongoose.model('AppraisalItemsView', AppraisalItemSchema, 'AppraisalItemsView');
+const AppraisalItemsView = mongoose.model('AppraisalItemsView', AppraisalItemSchema, 'AppraisalItemsView');
 
 module.exports = {
   AppraisalItemModel,
-  AppraisalItemView,
+  AppraisalItemsView,
 };

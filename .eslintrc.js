@@ -1,5 +1,3 @@
-const os = require('os');
-
 module.exports = {
   env: {
     browser: true,
@@ -13,7 +11,7 @@ module.exports = {
     ecmaVersion: 12,
   },
   rules: {
-    'linebreak-style': ['error', (os.EOL === '\r\n' ? 'windows' : 'unix')],
+    'linebreak-style': [0],
     'no-underscore-dangle': ['error', { allow: ['_id'] }],
   },
 };
