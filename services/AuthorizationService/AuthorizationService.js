@@ -7,7 +7,8 @@ const AuthorizationService = {
   Authorize: async (user, code, grant) => {
     const { id, role, organization } = await UserService.getUser(user.id);
     if (role) {
-      const rolePermissions = await PermissionService.getRolePermissionsByCode(role.id, code, organization.id);
+      const rolePermissions = await PermissionService
+        .getRolePermissionsByCode(role.id, code, organization.id);
       if (rolePermissions.filter((r) => r.grants.indexOf(grant) !== -1).length > 0) {
         return true;
       }
