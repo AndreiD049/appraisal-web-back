@@ -31,9 +31,11 @@ settingsRouter.put('/users/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
     const user = req.body;
+    const role = await RoleService.getRoleById(user.role);
+    const securityLevel = role ? role.securityLevel : 0;
     if ((await UserService.compareSecurityLevels(req.user, user)) === -1) throw new Error(`Cannot update user ${user.username}. (Greater securityLevel)`);
     if ((await RoleService.getUserRoleSecurityLevel(req.user.id))
-      < (await RoleService.getRoleById(user.role)).securityLevel) throw new Error(`Cannot assign this role to user ${user.username}`);
+      < securityLevel) throw new Error(`Cannot assign this role to user ${user.username}`);
     let result;
     if (req.user.id === id) {
       result = await (await UserService.updateSelf(user)).populate('organizations').populate('teams').execPopulate();

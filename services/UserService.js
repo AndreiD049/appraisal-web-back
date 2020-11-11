@@ -146,11 +146,7 @@ const UserService = {
    */
   async getNewcomers() {
     const users = await UserModel.find({
-      $or: [
-        { role: null },
-        { teams: { $exists: true, $eq: [] } },
-        { organizations: { $exists: true, $eq: [] } },
-      ],
+      organizations: { $exists: true, $eq: [] },
     }).populate({ path: 'teams organizations organization role', select: 'name' });
     return users || [];
   },
