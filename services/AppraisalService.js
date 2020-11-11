@@ -2,6 +2,7 @@ const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
 const { AppraisalItemModel } = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
+const { AuthorizationService } = require('./AuthorizationService');
 
 const validations = {
   validateItem(item) {
@@ -182,7 +183,7 @@ const AppraisalService = {
       user: user.id,
       createdUser: user.id,
     });
-    return await model.save();
+    return model.save();
   },
 
   async addItem(item, user) {
@@ -193,27 +194,27 @@ const AppraisalService = {
       user: user.id,
       createdUser: user.id,
     });
-    return await model.save();
+    return model.save();
   },
 
   // Add item to another user
   // Check if user is a team member
   async addItemToPeriodOfMember(periodId, item, user) {
     // Get the user to whom we add the item
-    const subject_user = await UserService.getUser(item.user);
+    const subjectUser = await UserService.getUser(item.user);
     const period = await this.getPeriodById(periodId);
     validations.validatePeriodActive(period);
-    await validations.validateUserInTeam(user, subject_user);
+    await validations.validateUserInTeam(user, subjectUser);
     const model = new AppraisalItemModel({
       type: item.type,
       status: item.status,
       content: item.content,
       periodId,
       organizationId: period.organizationId,
-      user: subject_user.id,
+      user: subjectUser.id,
       createdUser: user.id,
     });
-    return await model.save();
+    return model.save();
   },
 
   /*
@@ -234,10 +235,10 @@ const AppraisalService = {
   // Update item of another user
   async updateItemOfMember(itemId, update, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const subject_user = await UserService.getUser(item.user);
+    const subjectUser = await UserService.getUser(item.user);
 
     await validations.validateItemUpdate(item, update);
-    await validations.validateUserInTeam(user, subject_user);
+    await validations.validateUserInTeam(user, subjectUser);
 
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
     return updated;
@@ -262,10 +263,10 @@ const AppraisalService = {
   // Delete item of another user
   async deleteItemOfMember(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const subject_user = await UserService.getUser(item.user);
+    const subjectUser = await UserService.getUser(item.user);
 
     await validations.validateItemDelete(item);
-    await validations.validateUserInTeam(user, subject_user);
+    await validations.validateUserInTeam(user, subjectUser);
 
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
