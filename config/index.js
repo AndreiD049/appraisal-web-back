@@ -1,4 +1,5 @@
 const dotenv = require('dotenv');
+const constants = require('./constants');
 
 dotenv.config();
 
@@ -20,4 +21,5 @@ module.exports = {
     issuer: process.env.issuer.split(','),
     domain: process.env.domain,
   },
+  constants,
 };

@@ -111,7 +111,7 @@ appraisalPeriodsRouter.put('/:periodId/items/:id', AuthorizeReq('APPRAISAL DETAI
     else if (body.periodId !== periodId) throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
 
     // Update item and return updated version
-    res.json(await AppraisalService.updateItem(itemId, body));
+    res.json(await AppraisalService.updateItem(itemId, body, req.user));
   } catch (err) {
     next(err);
   }
@@ -190,12 +190,6 @@ appraisalPeriodsRouter.post('/:id/users/:userId/items', AuthorizeReq('APPRAISAL 
     const { body } = req;
     // add the subject user id to the body
     body.user = userId;
-    // Validate body
-    if (!body.type) throw new Error('Type should be specified');
-    else if (!body.status) throw new Error('Status should be specified');
-    else if (!body.content) throw new Error('Content cannot be null');
-    else if (!body.periodId) throw new Error('Period Id is blank');
-    else if (body.periodId !== periodId) throw new Error(`Request body and query have different periodId: ${body.periodId} vs ${periodId}`);
 
     // Insert item
     res.json(await AppraisalService.addItemToPeriodOfMember(periodId, body, req.user));

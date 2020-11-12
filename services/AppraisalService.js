@@ -2,62 +2,8 @@ const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
 const { AppraisalItemModel } = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
-const { AuthorizationService } = require('./AuthorizationService');
-
-const validations = {
-  validateItem(item) {
-    if (!item) {
-      throw new Error('Item is not valid');
-    }
-  },
-  validateUser(user) {
-    if (!user.id) {
-      throw new Error('User has no id');
-    }
-    if (!user.organization) {
-      throw new Error('User has no organization');
-    }
-    if (!user.role) {
-      throw new Error('User has no role');
-    }
-  },
-  validatePeriodActive(period, message) {
-    if (period.status === 'Finished') throw new Error(message || `Invalid period status - ${period.status}`);
-  },
-  async validateItemUpdate(item, update) {
-    if (item.relatedItemId && (!update.content || update.content !== item.content)) throw new Error('Item has related entries. Cannot update.');
-    const period = await AppraisalPeriodModel.findById(item.periodId);
-    if (period) {
-      this.validatePeriodActive(period);
-    }
-    this.validateItemNotFinished(item);
-  },
-  async validateItemDelete(item) {
-    this.validateItem(item);
-    if (item.relatedItemId) throw new Error('Item has related entries. Cannot delete.');
-    const period = await AppraisalPeriodModel.findById(item.periodId);
-    if (period) {
-      this.validatePeriodActive(period);
-    }
-    this.validateItemNotFinished(item);
-  },
-  async validateItemFinish(item) {
-    const period = await AppraisalPeriodModel.findById(item.periodId);
-    this.validatePeriodActive(period);
-    if (item.status !== 'Active') {
-      throw new Error(`Item type invalid - ${item.type}`);
-    }
-  },
-  validateItemNotFinished(item) {
-    if (item.status === 'Finished') throw new Error('Error: item is finished');
-  },
-  validateItemTypeIsNot(item, type) {
-    if (item.type === type) throw new Error(`Error: item.type is ${type}`);
-  },
-  async validateUserInTeam(user, teamMember) {
-    if (!(await UserService.isTeamMember(user, teamMember.id))) throw new Error('Cannot update. User is not a member of my teams.');
-  },
-};
+const Val = require('./validators/AppraisalValidators');
+const UVal = require('./validators/UserValidator');
 
 const AppraisalService = {
   async getPeriodsOverview(user) {
@@ -99,7 +45,7 @@ const AppraisalService = {
 
   async createPeriod(user, period) {
     const newPeriod = new AppraisalPeriodModel({ ...period });
-    return await newPeriod.save();
+    return newPeriod.save();
   },
 
   async updatePeriod(periodId, period) {
@@ -122,7 +68,7 @@ const AppraisalService = {
     const promises = orphans.map(async (orphan) => {
       // Set the periodId
       orphan.periodId = period.id;
-      await orphan.save();
+      return orphan.save();
     });
 
     await Promise.all(promises);
@@ -172,8 +118,11 @@ const AppraisalService = {
    */
   async addItemToPeriod(periodId, item, user) {
     const period = await this.getPeriodById(periodId);
-    validations.validatePeriodActive(period);
-    validations.validateItemTypeIsNot(item, 'Training_Suggested');
+
+    const validations = (new Val.ValidateItemTypeIsNot(item, 'Training_Suggested'))
+      .and(new Val.ValidateItemCanBeInserted(period, item, user));
+    await validations.validateThrow();
+
     const model = new AppraisalItemModel({
       type: item.type,
       status: item.status,
@@ -187,7 +136,6 @@ const AppraisalService = {
   },
 
   async addItem(item, user) {
-    validations.validateUser(user);
     const model = new AppraisalItemModel({
       ...item,
       organizationId: user.organization.id ? user.organization.id : user.organization,
@@ -201,17 +149,23 @@ const AppraisalService = {
   // Check if user is a team member
   async addItemToPeriodOfMember(periodId, item, user) {
     // Get the user to whom we add the item
-    const subjectUser = await UserService.getUser(item.user);
-    const period = await this.getPeriodById(periodId);
-    validations.validatePeriodActive(period);
-    await validations.validateUserInTeam(user, subjectUser);
+    const [userFrom, userTo, period] = await Promise.all([
+      UserService.getUser(user.id),
+      UserService.getUser(item.user),
+      this.getPeriodById(periodId),
+    ]);
+
+    const validate = (new UVal.ValidateUserInTeam(userFrom, userTo))
+      .and(new Val.ValidateItemCanBeInserted(period, item, userFrom));
+    await validate.validateThrow();
+
     const model = new AppraisalItemModel({
       type: item.type,
       status: item.status,
       content: item.content,
       periodId,
       organizationId: period.organizationId,
-      user: subjectUser.id,
+      user: userTo.id,
       createdUser: user.id,
     });
     return model.save();
@@ -222,11 +176,15 @@ const AppraisalService = {
    * 1. I cannot update a finished item
    * 2. I cannot update an item whose period is already finished
    */
-  async updateItem(itemId, update) {
+  async updateItem(itemId, update, user) {
     const item = await AppraisalItemModel.findById(itemId);
+    const period = await this.getPeriodById(item?.periodId);
 
-    await validations.validateItemUpdate(item, update);
-    validations.validateItemTypeIsNot(item, 'Training_Suggested');
+    const validations = (new Val.ValidateItemExists(item))
+      .and(new Val.ValidatePeriodExists(period))
+      .and(new Val.ValidateItemCanBeUpdated(item, period, update, user))
+      .and(new Val.ValidateItemTypeIsNot(item, 'Training_Suggested'));
+    await validations.validateThrow();
 
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
     return updated;
@@ -234,11 +192,20 @@ const AppraisalService = {
 
   // Update item of another user
   async updateItemOfMember(itemId, update, user) {
-    const item = await AppraisalItemModel.findById(itemId);
-    const subjectUser = await UserService.getUser(item.user);
+    const [item, userFrom] = await Promise.all([
+      AppraisalItemModel.findById(itemId),
+      UserService.getUser(user.id),
+    ]);
+    const [userTo, period] = await Promise.all([
+      UserService.getUser(item?.user),
+      this.getPeriodById(item?.periodId),
+    ]);
 
-    await validations.validateItemUpdate(item, update);
-    await validations.validateUserInTeam(user, subjectUser);
+    const validations = (new Val.ValidateItemExists(item))
+      .and(new Val.ValidatePeriodExists(period))
+      .and(new UVal.ValidateUserInTeam(userFrom, userTo))
+      .and(new Val.ValidateItemCanBeUpdated(item, period, update, user));
+    await validations.validateThrow();
 
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
     return updated;
@@ -253,8 +220,8 @@ const AppraisalService = {
   async deleteItem(itemId) {
     const item = await AppraisalItemModel.findById(itemId);
 
-    await validations.validateItemDelete(item);
-    validations.validateItemTypeIsNot(item, 'Training_Suggested');
+    // await validations.validateItemDelete(item);
+    // validations.validateItemTypeIsNot(item, 'Training_Suggested');
 
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
@@ -265,8 +232,8 @@ const AppraisalService = {
     const item = await AppraisalItemModel.findById(itemId);
     const subjectUser = await UserService.getUser(item.user);
 
-    await validations.validateItemDelete(item);
-    await validations.validateUserInTeam(user, subjectUser);
+    // await validations.validateItemDelete(item);
+    // await validations.validateUserInTeam(user, subjectUser);
 
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
@@ -285,7 +252,7 @@ const AppraisalService = {
    */
   async finishItem(item, session = null) {
     const itemDb = await AppraisalItemModel.findById(item.id);
-    await validations.validateItemFinish(itemDb);
+    // await validations.validateItemFinish(itemDb);
     if (itemDb.type === 'Planned') {
       const copy = await this.copyItem(itemDb, session);
       copy.periodId = null;

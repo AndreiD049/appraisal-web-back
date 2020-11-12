@@ -31,7 +31,7 @@ appraisalItemsRouter.put('/:id', AuthorizeReq('APPRAISAL DETAILS', 'update'), as
     const { body } = req;
 
     // Insert item
-    res.json(await AppraisalService.updateItem(id, body));
+    res.json(await AppraisalService.updateItem(id, body, req.user));
   } catch (err) {
     next(err);
   }
