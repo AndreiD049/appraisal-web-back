@@ -237,6 +237,7 @@ const AppraisalService = {
         ]),
       ]),
     ]);
+    console.log(await validate.userAuthorized(userDb, AD.code, AD.grants.update)());
     await perform(validations);
 
     const { status } = item;
