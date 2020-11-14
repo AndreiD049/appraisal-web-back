@@ -24,6 +24,9 @@ class ValidatePeriodExists extends BaseValidator {
   }
 }
 
+/**
+ * Check if period is active
+ */
 class ValidatePeriodActive extends BaseValidator {
   /**
    * @param {any} period - Appraisal period
@@ -42,6 +45,9 @@ class ValidatePeriodActive extends BaseValidator {
   }
 }
 
+/**
+ * Check if item is active
+ */
 class ValidateItemActive extends BaseValidator {
   /**
    * @param {*} item - Appraisal item
@@ -83,6 +89,9 @@ class ValidateItemExists extends BaseValidator {
   }
 }
 
+/**
+ * Check if item can be deleted
+ */
 class ValidateItemCanBeDeleted extends BaseValidator {
   /**
    * @param {*} item - Appraisal item
@@ -99,15 +108,15 @@ class ValidateItemCanBeDeleted extends BaseValidator {
       valid: true,
       error: '',
     };
-    const allowedDeleteFinished = await Auth
-      .Authorize(
-        this.user,
-        securities.APPRAISALDETAILS.code,
-        securities.APPRAISAL_DETAILS.grants.deleteFinished,
-      );
-    if (!allowedDeleteFinished) {
+
+    const AD = securities.APPRAISAL_DETAILS;
+    const ADO = securities.APPRAISAL_DETAILS_OTHER;
+    const canDeleteFinished = String(this.user.id) === String(this.item.user)
+      ? await Auth.Authorize(this.user, AD.code, AD.grants.deleteFinished)
+      : await Auth.Authorize(this.user, ADO.code, ADO.grants.deleteFinished);
+    if (!canDeleteFinished) {
       // if this.item has a period, check if it's active
-      if (this.item.period) {
+      if (this.item.periodId) {
         this.squeeze(new ValidatePeriodActive(), 'and');
       }
       // this.item has related already
@@ -125,6 +134,9 @@ class ValidateItemCanBeDeleted extends BaseValidator {
   }
 }
 
+/**
+ * Check item type
+ */
 class ValidateItemTypeIsNot extends BaseValidator {
   /**
    * @param {string} type - item type
@@ -148,6 +160,9 @@ class ValidateItemTypeIsNot extends BaseValidator {
   }
 }
 
+/**
+ * Check if item can be updated
+ */
 class ValidateItemCanBeUpdated extends BaseValidator {
   /**
    * @param {*} item - Appraisal item
@@ -170,13 +185,13 @@ class ValidateItemCanBeUpdated extends BaseValidator {
     const AD = securities.APPRAISAL_DETAILS;
     const ADO = securities.APPRAISAL_DETAILS_OTHER;
     // Can user update finished items, for himeself or other users
-    const canUpdateFinished = this.user.id === this.item.user
+    const canUpdateFinished = String(this.user.id) === String(this.item.user)
       ? await Auth.Authorize(this.user, AD.code, AD.grants.updateFinished)
       : await Auth.Authorize(this.user, ADO.code, ADO.grants.updateFinished);
     // Can update items of other users
     const canUpdateOtherUsers = await Auth.Authorize(this.user, ADO.code, ADO.grants.update);
     // if item has a period, check if user can update finished items
-    if (this.period) this.squeeze(new ValidatePeriodActive(), 'and', !canUpdateFinished);
+    if (this.period) this.squeeze(new ValidatePeriodActive(this.period), 'and', !canUpdateFinished);
     // check if user can update finished items
     this.squeeze(new ValidateItemActive(this.item, this.user), 'and', !canUpdateFinished);
     // if user updating is not the owner of the item, check if he has the authorization to do it
@@ -188,6 +203,9 @@ class ValidateItemCanBeUpdated extends BaseValidator {
   }
 }
 
+/**
+ * Check if item can be created in database
+ */
 class ValidateItemCanBeInserted extends BaseValidator {
   /**
    * @param {*} period - Appraisal Period
@@ -232,6 +250,9 @@ class ValidateItemCanBeInserted extends BaseValidator {
   }
 }
 
+/**
+ * Check if item has the same user as the requestor
+ */
 class ValidateIsSameUser extends BaseValidator {
   /**
    * Check whether user making the request is the same as

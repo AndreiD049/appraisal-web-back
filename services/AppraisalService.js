@@ -182,7 +182,7 @@ const AppraisalService = {
 
     const validations = (new Val.ValidateItemExists(item))
       .and(new Val.ValidatePeriodExists(period))
-      .and(new Val.ValidateItemCanBeUpdated(item, period, update, user))
+      .and(new Val.ValidateItemCanBeUpdated(period, item, update, user))
       .and(new Val.ValidateItemTypeIsNot(item, 'Training_Suggested'));
     await validations.validateThrow();
 
@@ -217,11 +217,13 @@ const AppraisalService = {
    * 2. I cannot delete an item whose period is already finished
    * 3. I cannot delete an Training suggested item of myself
    */
-  async deleteItem(itemId) {
+  async deleteItem(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
+    const userDb = await UserService.getUser(user.id);
 
-    // await validations.validateItemDelete(item);
-    // validations.validateItemTypeIsNot(item, 'Training_Suggested');
+    const validations = (new Val.ValidateItemExists(item))
+      .and(new Val.ValidateItemCanBeDeleted(item, userDb));
+    await validations.validateThrow();
 
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
@@ -230,10 +232,13 @@ const AppraisalService = {
   // Delete item of another user
   async deleteItemOfMember(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const subjectUser = await UserService.getUser(item.user);
+    const userTo = await UserService.getUser(user.id);
+    const userFrom = await UserService.getUser(item.user);
 
-    // await validations.validateItemDelete(item);
-    // await validations.validateUserInTeam(user, subjectUser);
+    const validations = (new Val.ValidateItemExists(item))
+      .and(new UVal.ValidateUserInTeam(userFrom, userTo))
+      .and(new Val.ValidateItemCanBeDeleted(item, userFrom));
+    await validations.validateThrow();
 
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;

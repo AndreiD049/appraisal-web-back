@@ -1,3 +1,5 @@
+const { options } = require("../../api/routes/periods");
+
 class BaseValidator {
   constructor() {
   /**
@@ -129,6 +131,8 @@ class BaseValidator {
       }
       const currentHead = this.next;
       const newHead = validator;
+      newHead.opType = this.opType;
+      this.opType = opType;
       // current next is the @validator
       this.nextValidator = validator;
       // @validator's next is the initial next item

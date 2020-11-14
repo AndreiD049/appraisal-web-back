@@ -227,7 +227,6 @@ appraisalPeriodsRouter.delete('/:periodId/users/:userId/items/:id', AuthorizeReq
     const { periodId } = req.params;
     // Delete item and return the deleted item
     const item = (await AppraisalService.getItemById(itemId)).toJSON();
-    if (!item) throw new Error(`Item ${itemId} was not found`);
     if (String(item.periodId) !== periodId) throw new Error(`Request body and query have different periodId: ${item.periodId} vs ${periodId}`);
     else if (String(item.user) !== userId) throw new Error(`Request body and query have different user ids: ${item.user} vs ${userId}`);
     await AppraisalService.deleteItemOfMember(itemId, req.user);
