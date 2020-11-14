@@ -220,7 +220,7 @@ const AppraisalService = {
    */
   async updateItem(itemId, update, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    // const period = await this.getPeriodById(item?.periodId);
+    const period = await this.getPeriodById(item?.periodId);
     const userDb = await UserService.getUser(user.id);
 
     const validations = and([
@@ -228,11 +228,11 @@ const AppraisalService = {
       not(validate.itemType(item, 'Training_Suggested')),
       or([
         and([
-          not(validate.itemStatus(item, 'Finished')),
+          not(validate.periodStatus(period, 'Finished')),
           validate.userAuthorized(userDb, AD.code, AD.grants.update),
         ]),
         and([
-          validate.itemStatus(item, 'Finished'),
+          validate.periodStatus(period, 'Finished'),
           validate.userAuthorized(userDb, AD.code, AD.grants.updateFinished),
         ]),
       ]),
