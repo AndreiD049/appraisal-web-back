@@ -48,6 +48,7 @@ const AppraisalItemSchema = new mongoose.Schema({
     type: mongoose.ObjectId,
     required: false,
     default: null,
+    index: true,
   },
   user: {
     type: mongoose.Types.ObjectId,

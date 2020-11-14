@@ -66,17 +66,21 @@ const AppraisalService = {
    */
   async addOrphanUserItemsToPeriod(periodId, userId) {
     const period = await this.getPeriodById(periodId);
-    const orphans = await AppraisalItemModel.find({
-      user: userId,
-      periodId: null,
-    });
-    const promises = orphans.map(async (orphan) => {
-      // Set the periodId
-      orphan.periodId = period.id;
-      return orphan.save();
-    });
 
-    await Promise.all(promises);
+    const validations = await not(validate.periodStatus(period, 'Finished'))();
+    if (validations.result) {
+      const orphans = await AppraisalItemModel.find({
+        user: userId,
+        periodId: null,
+      });
+      const promises = orphans.map(async (orphan) => AppraisalItemModel.findByIdAndUpdate(
+        orphan.id, {
+          periodId: period.id,
+        },
+      ));
+
+      await Promise.all(promises);
+    }
   },
 
   async getUserItemsByPeriodId(periodId, userId) {
@@ -221,6 +225,7 @@ const AppraisalService = {
 
     const validations = and([
       validate.itemExists(item),
+      not(validate.itemType(item, 'Training_Suggested')),
       or([
         and([
           not(validate.itemStatus(item, 'Finished')),
@@ -234,7 +239,10 @@ const AppraisalService = {
     ]);
     await perform(validations);
 
+    const { status } = item;
+    if (status === 'Finished') await this.unFinishItem(item);
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
+    if (status === 'Finished') await this.finishItem(item);
     return updated;
   },
 
@@ -267,7 +275,10 @@ const AppraisalService = {
     ]);
     await perform(validations);
 
+    const { status } = item;
+    if (status === 'Finished') await this.unFinishItem(item);
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
+    if (status === 'Finished') await this.finishItem(updated);
     return updated;
   },
 
@@ -283,6 +294,7 @@ const AppraisalService = {
 
     const validations = and([
       validate.itemExists(item),
+      not(validate.itemType(item, 'Training_Suggested')),
       or([
         and([
           not(validate.itemStatus(item, 'Finished')),
@@ -296,6 +308,8 @@ const AppraisalService = {
     ]);
     await perform(validations);
 
+    const { status } = item;
+    if (status === 'Finished') await this.unFinishItem(item);
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
   },
@@ -323,8 +337,24 @@ const AppraisalService = {
     ]);
     await perform(validations);
 
+    const { status } = item;
+    if (status === 'Finished') await this.unFinishItem(item);
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
+  },
+
+  async deleteRelated(item, session = null) {
+    const related = await AppraisalItemModel.find({
+      relatedItemId: item.id,
+    });
+    if (related.length > 0) {
+      related.forEach(async (element) => {
+        await this.deleteRelated(element, session);
+      });
+    }
+    await AppraisalItemModel.deleteMany({
+      relatedItemId: item.id,
+    });
   },
 
   /**
@@ -343,6 +373,7 @@ const AppraisalService = {
     // await validations.validateItemFinish(itemDb);
     if (itemDb.type === 'Planned') {
       const copy = await this.copyItem(itemDb, session);
+      copy.status = 'Active';
       copy.periodId = null;
       copy.relatedItemId = itemDb.id;
       copy.save({ session });
@@ -350,6 +381,24 @@ const AppraisalService = {
 
     itemDb.status = 'Finished';
     return itemDb.save({ session });
+  },
+
+  async unFinishItem(item, session = null) {
+    let currentSession = session;
+    if (!currentSession) currentSession = await AppraisalPeriodModel.startSession();
+    const transaction = await currentSession.withTransaction(async () => {
+      const itemDb = await AppraisalItemModel.findById(item.id);
+      /**
+       * if item is 'Planned', we need to find it's related item and delete it
+       */
+      if (item.type === 'Planned') {
+        await this.deleteRelated(itemDb, currentSession);
+      }
+
+      itemDb.status = 'Active';
+      return itemDb.save({ session: currentSession });
+    });
+    return transaction.result.ok === 1;
   },
 
   async finishPeriod(periodId, user) {
