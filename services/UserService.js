@@ -159,11 +159,11 @@ const UserService = {
    */
   async isTeamMember(askingUser, targetUser) {
     const dbUser = await UserModel.findById(askingUser.id);
-    if (dbUser.id === targetUser) return true;
+    if (dbUser.id === targetUser.id) return true;
     const newComers = (await this.getNewcomers()).map((m) => m.id.toString());
-    if (newComers.indexOf(targetUser) !== -1) return true;
+    if (newComers.indexOf(targetUser.id) !== -1) return true;
     const teammembers = (await this.getUserTeamMembers(dbUser)).map((m) => m.id.toString());
-    return teammembers.indexOf(targetUser) !== -1;
+    return teammembers.indexOf(targetUser.id) !== -1;
   },
 
   async compareSecurityLevels(askingUser, targetUser) {

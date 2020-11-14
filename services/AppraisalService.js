@@ -2,8 +2,13 @@ const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
 const { AppraisalItemModel } = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const UserModel = require('../models/UserModel');
-const Val = require('./validators/AppraisalValidators');
-const UVal = require('./validators/UserValidator');
+const {
+  and, or, not, validate, perform,
+} = require('./validators');
+const { securities } = require('../config/constants');
+
+const AD = securities.APPRAISAL_DETAILS;
+const ADO = securities.APPRAISAL_DETAILS_OTHER;
 
 const AppraisalService = {
   async getPeriodsOverview(user) {
@@ -118,12 +123,28 @@ const AppraisalService = {
    */
   async addItemToPeriod(periodId, item, user) {
     const period = await this.getPeriodById(periodId);
+    const userDb = await UserService.getUser(user.id);
 
-    const validations = (new Val.ValidateItemTypeIsNot(item, 'Training_Suggested'))
-      .and(new Val.ValidateItemCanBeInserted(period, item, user));
-    await validations.validateThrow();
+    const validations = and([
+      validate.userExists(userDb),
+      validate.itemExists(item),
+      validate.periodExists(period),
+      not(validate.itemType(item, 'Training_Suggested')),
+      validate.itemSameUser(item, userDb),
+      or([
+        and([
+          not(validate.periodStatus(period, 'Finished')),
+          validate.userAuthorized(userDb, AD.code, AD.grants.create),
+        ]),
+        and([
+          validate.periodStatus(period, 'Finished'),
+          validate.userAuthorized(userDb, AD.code, AD.grants.createFinished),
+        ]),
+      ]),
+    ]);
+    await perform(validations);
 
-    const model = new AppraisalItemModel({
+    const document = await new AppraisalItemModel({
       type: item.type,
       status: item.status,
       content: item.content,
@@ -131,8 +152,10 @@ const AppraisalService = {
       organizationId: period.organizationId,
       user: user.id,
       createdUser: user.id,
-    });
-    return model.save();
+    }).save();
+
+    if (period.status === 'Finished') return this.finishItem(document);
+    return document;
   },
 
   async addItem(item, user) {
@@ -155,11 +178,25 @@ const AppraisalService = {
       this.getPeriodById(periodId),
     ]);
 
-    const validate = (new UVal.ValidateUserInTeam(userFrom, userTo))
-      .and(new Val.ValidateItemCanBeInserted(period, item, userFrom));
-    await validate.validateThrow();
+    const validations = and([
+      validate.itemExists(item),
+      validate.periodExists(period),
+      not(validate.itemSameUser(item, userFrom)),
+      validate.userInTeam(userFrom, userTo),
+      or([
+        and([
+          not(validate.periodStatus(period, 'Finished')),
+          validate.userAuthorized(userFrom, ADO.code, ADO.grants.create),
+        ]),
+        and([
+          validate.periodStatus(period, 'Finished'),
+          validate.userAuthorized(userFrom, ADO.code, ADO.grants.createFinished),
+        ]),
+      ]),
+    ]);
+    await perform(validations);
 
-    const model = new AppraisalItemModel({
+    const document = await new AppraisalItemModel({
       type: item.type,
       status: item.status,
       content: item.content,
@@ -167,8 +204,9 @@ const AppraisalService = {
       organizationId: period.organizationId,
       user: userTo.id,
       createdUser: user.id,
-    });
-    return model.save();
+    }).save();
+    if (period.status === 'Finished') return this.finishItem(document);
+    return document;
   },
 
   /*
@@ -178,13 +216,23 @@ const AppraisalService = {
    */
   async updateItem(itemId, update, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const period = await this.getPeriodById(item?.periodId);
+    // const period = await this.getPeriodById(item?.periodId);
+    const userDb = await UserService.getUser(user.id);
 
-    const validations = (new Val.ValidateItemExists(item))
-      .and(new Val.ValidatePeriodExists(period))
-      .and(new Val.ValidateItemCanBeUpdated(period, item, update, user))
-      .and(new Val.ValidateItemTypeIsNot(item, 'Training_Suggested'));
-    await validations.validateThrow();
+    const validations = and([
+      validate.itemExists(item),
+      or([
+        and([
+          not(validate.itemStatus(item, 'Finished')),
+          validate.userAuthorized(userDb, AD.code, AD.grants.update),
+        ]),
+        and([
+          validate.itemStatus(item, 'Finished'),
+          validate.userAuthorized(userDb, AD.code, AD.grants.updateFinished),
+        ]),
+      ]),
+    ]);
+    await perform(validations);
 
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
     return updated;
@@ -201,11 +249,23 @@ const AppraisalService = {
       this.getPeriodById(item?.periodId),
     ]);
 
-    const validations = (new Val.ValidateItemExists(item))
-      .and(new Val.ValidatePeriodExists(period))
-      .and(new UVal.ValidateUserInTeam(userFrom, userTo))
-      .and(new Val.ValidateItemCanBeUpdated(item, period, update, user));
-    await validations.validateThrow();
+    const validations = and([
+      validate.itemExists(item),
+      validate.periodExists(period),
+      not(validate.itemSameUser(item, userFrom)),
+      validate.userInTeam(userFrom, userTo),
+      or([
+        and([
+          not(validate.itemStatus(item, 'Finished')),
+          validate.userAuthorized(userFrom, ADO.code, ADO.grants.update),
+        ]),
+        and([
+          validate.itemStatus(item, 'Finished'),
+          validate.userAuthorized(userFrom, ADO.code, ADO.grants.updateFinished),
+        ]),
+      ]),
+    ]);
+    await perform(validations);
 
     const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
     return updated;
@@ -221,9 +281,20 @@ const AppraisalService = {
     const item = await AppraisalItemModel.findById(itemId);
     const userDb = await UserService.getUser(user.id);
 
-    const validations = (new Val.ValidateItemExists(item))
-      .and(new Val.ValidateItemCanBeDeleted(item, userDb));
-    await validations.validateThrow();
+    const validations = and([
+      validate.itemExists(item),
+      or([
+        and([
+          not(validate.itemStatus(item, 'Finished')),
+          validate.userAuthorized(userDb, AD.code, AD.grants.delete),
+        ]),
+        and([
+          validate.itemStatus(item, 'Finished'),
+          validate.userAuthorized(userDb, AD.code, AD.grants.deleteFinished),
+        ]),
+      ]),
+    ]);
+    await perform(validations);
 
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
@@ -232,13 +303,25 @@ const AppraisalService = {
   // Delete item of another user
   async deleteItemOfMember(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const userTo = await UserService.getUser(user.id);
-    const userFrom = await UserService.getUser(item.user);
+    const userFrom = await UserService.getUser(user.id);
+    const userTo = await UserService.getUser(item.user);
 
-    const validations = (new Val.ValidateItemExists(item))
-      .and(new UVal.ValidateUserInTeam(userFrom, userTo))
-      .and(new Val.ValidateItemCanBeDeleted(item, userFrom));
-    await validations.validateThrow();
+    const validations = and([
+      validate.itemExists(item),
+      not(validate.itemSameUser(item, userFrom)),
+      validate.userInTeam(userFrom, userTo),
+      or([
+        and([
+          not(validate.itemStatus(item, 'Finished')),
+          validate.userAuthorized(userFrom, ADO.code, ADO.grants.delete),
+        ]),
+        and([
+          validate.itemStatus(item, 'Finished'),
+          validate.userAuthorized(userFrom, ADO.code, ADO.grants.deleteFinished),
+        ]),
+      ]),
+    ]);
+    await perform(validations);
 
     const deleted = await AppraisalItemModel.findByIdAndDelete(itemId);
     return deleted;
@@ -266,7 +349,7 @@ const AppraisalService = {
     }
 
     itemDb.status = 'Finished';
-    itemDb.save({ session });
+    return itemDb.save({ session });
   },
 
   async finishPeriod(periodId, user) {

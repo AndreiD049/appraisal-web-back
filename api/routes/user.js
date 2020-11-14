@@ -32,9 +32,9 @@ userRouter.get('/', cacheRequest({ maxAge: 3600, mustRevalidate: true }), async 
  */
 userRouter.put('/:id', async (req, res, next) => {
   try {
-    const { id } = req.params;
     const user = req.body;
-    if (!(await UserService.isTeamMember(req.user, id))) throw new Error(`Cannot update user ${user.id}. User is not a part of your teams.`);
+
+    if (!(await UserService.isTeamMember(req.user, user))) throw new Error(`Cannot update user ${user.id}. User is not a part of your teams.`);
     let result;
     if (req.user.id === user.id) {
       result = await (await UserService.updateSelf(user)).populate('organizations').populate('teams').execPopulate();
@@ -54,13 +54,11 @@ userRouter.put('/:id', async (req, res, next) => {
 userRouter.get('/user/:id', cacheRequest({ noCache: true }), async (req, res, next) => {
   try {
     const { id } = req.params;
-    // Check if we are logged in
-    if (!req.user) throw new Error('No user attached to the requst');
+    const user = await UserService.getUser(id);
     // Check if the user in question is my team-member
-    if (!(await UserService.isTeamMember(req.user, id))) throw new Error(`Cannot get user info. ${id} is not on your team`);
+    if (!(await UserService.isTeamMember(req.user, user))) throw new Error(`Cannot get user info. ${id} is not on your team`);
     // Fetch user's info from the database and return it
-    const data = await UserService.getUser(id);
-    res.json(data);
+    res.json(user);
   } catch (err) {
     next(err);
   }

@@ -140,11 +140,11 @@ appraisalPeriodsRouter.get('/:periodId/users/:userId', AuthorizeReq('APPRAISAL D
   try {
     const { periodId } = req.params;
     const { userId } = req.params;
+    const user = await UserService.getUser(userId);
 
     // make sure we are allowed to get this users details
-    if (!(await UserService.isTeamMember(req.user, userId))) throw new Error(`Cannot get user details. '${userId}' is not on your team`);
+    if (!(await UserService.isTeamMember(req.user, user))) throw new Error(`Cannot get user details. '${userId}' is not on your team`);
 
-    const user = await UserService.getUser(userId);
     if (user === null) throw new Error(`User '${userId}' was not found`);
 
     const period = (await AppraisalService.getPeriodById(periodId)).toJSON();
@@ -166,7 +166,7 @@ appraisalPeriodsRouter.get('/:periodId/users/:userId/items', AuthorizeReq('APPRA
     const user = await UserService.getUser(userId);
     // Validate
     if (user === null) throw new Error(`User '${userId}' was not found`);
-    if (!(await UserService.isTeamMember(req.user, userId))) throw new Error(`User '${userId}' is not in your team`);
+    if (!(await UserService.isTeamMember(req.user, user))) throw new Error(`User '${userId}' is not in your team`);
     // Get the period with current id
     const period = (await AppraisalService.getPeriodById(periodId)).toJSON();
 
