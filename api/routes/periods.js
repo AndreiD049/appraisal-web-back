@@ -36,9 +36,10 @@ appraisalPeriodsRouter.get('/:id', AuthorizeReq('APPRAISAL PERIODS', 'read'), as
     // If not, it's the first time user accesses the period
     if (!period.users.find((u) => String(u) === String(req.user.id))) {
       await AppraisalService.updatePeriod(period.id, { users: period.users.concat(req.user.id) });
-      // check if there are any orphan appraisal items to add them here
-      await AppraisalService.addOrphanUserItemsToPeriod(period.id, req.user.id);
     }
+    
+    // check if there are any orphan appraisal items to add them here
+    await AppraisalService.addOrphanUserItemsToPeriod(period.id, req.user.id);
 
     // Only get items of current user
     const items = (await AppraisalService.getUserItemsByPeriodId(periodId, req.user.id));

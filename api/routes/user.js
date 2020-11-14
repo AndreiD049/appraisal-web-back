@@ -73,7 +73,7 @@ userRouter.get('/organizations', cacheRequest({ noCache: true }), async (req, re
   }
 });
 
-userRouter.get('/team-members', cacheRequest({ maxAge: 600, mustRevalidate: true }), async (req, res, next) => {
+userRouter.get('/team-members', cacheRequest({ noCache: true }), async (req, res, next) => {
   try {
     const members = await UserService.getUserTeamMembers(req.user);
     res.json(members.map((member) => member));
