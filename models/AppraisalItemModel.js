@@ -10,6 +10,7 @@ const validItemTypes = [
   'SWOT_W',
   'SWOT_O',
   'SWOT_T',
+  'Feedback',
 ];
 
 const validItemStatuses = [
