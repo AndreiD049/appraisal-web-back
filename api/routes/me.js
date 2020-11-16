@@ -28,7 +28,7 @@ meRouter.get('/login', (req, res, next) => {
       response: res,
       failureRedirect: '/login',
     })(req, res, next);
-  catch (err) {
+  } catch (err) {
     req.session.destroy();
     next(err);
   }
