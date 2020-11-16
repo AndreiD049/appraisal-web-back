@@ -23,10 +23,15 @@ meRouter.get('/me', async (req, res, next) => {
 });
 
 meRouter.get('/login', (req, res, next) => {
-  passport.authenticate('azuread-openidconnect', {
-    response: res,
-    failureRedirect: '/login',
-  })(req, res, next);
+  try {
+    passport.authenticate('azuread-openidconnect', {
+      response: res,
+      failureRedirect: '/login',
+    })(req, res, next);
+  } catch (err) {
+    req.session.destroy();
+    next(err);
+  }
 },
 (req, res, next) => {
   res.redirect('/');
