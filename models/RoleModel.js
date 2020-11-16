@@ -24,17 +24,14 @@ const RoleSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -43,5 +40,9 @@ RoleSchema.set('toJSON', {
 });
 
 const RoleModel = mongoose.model('Role', RoleSchema);
+const RolesView = mongoose.model('RolesView', RoleSchema, 'RolesView', true);
 
-module.exports = RoleModel;
+module.exports = {
+  RoleModel,
+  RolesView,
+};

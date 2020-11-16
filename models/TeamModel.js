@@ -14,16 +14,14 @@ const TeamSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     required: false,
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -32,5 +30,9 @@ TeamSchema.set('toJSON', {
 });
 
 const TeamModel = mongoose.model('Team', TeamSchema);
+const TeamsView = mongoose.model('TeamsView', TeamSchema, 'TeamsView', true);
 
-module.exports = TeamModel;
+module.exports = {
+  TeamModel,
+  TeamsView,
+};

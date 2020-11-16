@@ -11,17 +11,14 @@ const AuditPointTemplateSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -67,9 +64,11 @@ AuditTemplateSchema.set('toJSON', {
 });
 
 const AuditTemplateModel = mongoose.model('AuditTemplate', AuditTemplateSchema);
+const AuditTemplatesView = mongoose.model('AuditTemplatesView', AuditTemplateSchema, 'AuditTemplatesView', true);
 
 module.exports = {
   AuditTemplateSchema,
   AuditTemplateModel,
   AuditPointTemplateModel,
+  AuditTemplatesView,
 };

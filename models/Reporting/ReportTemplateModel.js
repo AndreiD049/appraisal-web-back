@@ -26,17 +26,14 @@ const ReportTemplateSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -45,5 +42,9 @@ ReportTemplateSchema.set('toJSON', {
 });
 
 const ReportTemplateModel = mongoose.model('ReportTempalte', ReportTemplateSchema);
+const ReportTemplatesView = mongoose.model('ReportTemplatesView', ReportTemplateSchema, 'ReportTemplatesView', true);
 
-module.exports = ReportTemplateModel;
+module.exports = {
+  ReportTemplateModel,
+  ReportTemplatesView,
+};

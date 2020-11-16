@@ -1,4 +1,4 @@
-const TeamModel = require('../models/TeamModel');
+const { TeamModel } = require('../models/TeamModel');
 
 const TeamService = {
   /**

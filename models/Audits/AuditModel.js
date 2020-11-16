@@ -70,17 +70,14 @@ const AuditSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -89,5 +86,9 @@ AuditSchema.set('toJSON', {
 });
 
 const AuditModel = mongoose.model('Audit', AuditSchema);
+const AuditsView = mongoose.model('AuditsView', AuditSchema, 'AuditsView', true);
 
-module.exports = AuditModel;
+module.exports = {
+  AuditModel,
+  AuditsView,
+};

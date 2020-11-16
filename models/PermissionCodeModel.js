@@ -8,8 +8,7 @@ const PermissionCodeSchema = new mongoose.Schema({
     required: true,
     unique: true,
     minlength: 3,
-    maxlength: 30,
-    required: true,
+    maxlength: 50,
   },
   description: {
     type: String,
@@ -25,17 +24,14 @@ const PermissionCodeSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -44,5 +40,9 @@ PermissionCodeSchema.set('toJSON', {
 });
 
 const PermissionCodeModel = mongoose.model('PermissionCode', PermissionCodeSchema);
+const PermissionCodesView = mongoose.model('PermissionCodesView', PermissionCodeSchema, 'PermissionCodesView', true);
 
-module.exports = PermissionCodeModel;
+module.exports = {
+  PermissionCodeModel,
+  PermissionCodesView,
+};

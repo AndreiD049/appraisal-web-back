@@ -38,6 +38,11 @@ const UserSchema = new mongoose.Schema({
     ref: 'Organization',
     index: true,
   }],
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
+  },
 });
 
 UserSchema.set('toJSON', {
@@ -45,5 +50,9 @@ UserSchema.set('toJSON', {
 });
 
 const UserModel = mongoose.model('User', UserSchema);
+const UsersView = mongoose.model('UsersView', UserSchema, 'UsersView', true);
 
-module.exports = UserModel;
+module.exports = {
+  UserModel,
+  UsersView,
+};

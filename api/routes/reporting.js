@@ -4,11 +4,9 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const carbone = require('carbone');
-const mongoose = require('mongoose');
-const { ReportingService, ReportTemplateService } = require('../../services/Reporting');
-const { AppraisalItemsView } = require('../../models/AppraisalItemModel');
-const AppraisalItemModel = require('../../models/AppraisalItemModel');
+const { ReportTemplateService } = require('../../services/Reporting');
 const { AuthorizeReq } = require('../../services/AuthorizationService').AuthorizationService;
+const { securities } = require('../../config/constants');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -27,6 +25,11 @@ reportingRouter.get('/', AuthorizeReq('REPORTS', 'read'), async (req, res, next)
   }
 });
 
+/**
+ * Create the report file in the temporary directory
+ * Generated from template.
+ * Used only as samples
+ */
 reportingRouter.post('/template/generate',
   AuthorizeReq('REPORT-TEMPLATES', 'create'),
   upload.single('template'),
@@ -36,14 +39,14 @@ reportingRouter.post('/template/generate',
       const finalPath = path.join(os.tmpdir(), req.user.id, 'templates', req.file.originalname);
       fs.mkdirSync(path.join(os.tmpdir(), req.user.id, 'templates'), { recursive: true });
       fs.writeFileSync(finalPath, req.file.buffer);
-      const aggregation = JSON.parse(body.aggregation);
-      const data = await AppraisalItemsView.aggregate(aggregation);
-      carbone.render(finalPath, data, (err, result) => {
-        if (err) throw new Error(`Failed to generate template - ${err}`);
+      const { aggregation } = body;
+      const data = await ReportTemplateService.processAggregation(aggregation, req.user);
+      carbone.render(finalPath, data, { hardRefresh: true }, (err, result) => {
+        if (err) return next(err);
         const filePathResult = path.join(os.tmpdir(), req.user.id, 'results', req.file.originalname);
         fs.mkdirSync(path.join(os.tmpdir(), req.user.id, 'results'), { recursive: true });
         fs.writeFileSync(filePathResult, result);
-        res.json({
+        return res.json({
           filepath: filePathResult,
         });
       });
@@ -52,8 +55,29 @@ reportingRouter.post('/template/generate',
     }
   });
 
+/**
+ * Retrieve sample data
+ */
+reportingRouter.post('/template/sample',
+  AuthorizeReq(securities.REPORT_TEMPLATES.code, securities.REPORT_TEMPLATES.grants.create),
+  async (req, res, next) => {
+    try {
+      const { aggregation } = req.body;
+      const data = await ReportTemplateService
+        .sampleData(await ReportTemplateService
+          .formatData(await ReportTemplateService
+            .processAggregation(aggregation, req.user)));
+      res.json(data);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+/**
+ * Download the sample report generated from tempalte
+ */
 reportingRouter.get('/template/generate',
-  AuthorizeReq('REPORT-TEMPLATES', 'create'),
+  AuthorizeReq(securities.REPORT_TEMPLATES.code, securities.REPORT_TEMPLATES.grants.create),
   async (req, res, next) => {
     try {
       const { filepath } = req.query;
@@ -66,6 +90,9 @@ reportingRouter.get('/template/generate',
     }
   });
 
+/**
+ * Create a new template
+ */
 reportingRouter.post('/templates',
   AuthorizeReq('REPORT-TEMPLATES', 'create'),
   upload.single('template'),

@@ -1,5 +1,5 @@
-const PermissionModel = require('../../models/PermissionModel');
-const PermissionCodeModel = require('../../models/PermissionCodeModel');
+const { PermissionModel } = require('../../models/PermissionModel');
+const { PermissionCodeModel } = require('../../models/PermissionCodeModel');
 const UserService = require('../UserService');
 
 const PermissionService = {

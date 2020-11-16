@@ -1,7 +1,7 @@
-const AppraisalPeriodModel = require('../models/AppraisalPeriodModel');
+const { AppraisalPeriodModel } = require('../models/AppraisalPeriodModel');
 const { AppraisalItemModel } = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
-const UserModel = require('../models/UserModel');
+const { UserModel } = require('../models/UserModel');
 const {
   and, or, not, validate, perform,
 } = require('./validators');
@@ -220,7 +220,7 @@ const AppraisalService = {
    */
   async updateItem(itemId, update, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const period = await this.getPeriodById(item?.periodId);
+    // const period = await this.getPeriodById(item?.periodId);
     const userDb = await UserService.getUser(user.id);
 
     const validations = and([
@@ -228,16 +228,15 @@ const AppraisalService = {
       not(validate.itemType(item, 'Training_Suggested')),
       or([
         and([
-          not(validate.periodStatus(period, 'Finished')),
+          not(validate.itemStatus(item, 'Finished')),
           validate.userAuthorized(userDb, AD.code, AD.grants.update),
         ]),
         and([
-          validate.periodStatus(period, 'Finished'),
+          validate.itemStatus(item, 'Finished'),
           validate.userAuthorized(userDb, AD.code, AD.grants.updateFinished),
         ]),
       ]),
     ]);
-    console.log(await validate.userAuthorized(userDb, AD.code, AD.grants.update)());
     await perform(validations);
 
     const { status } = item;

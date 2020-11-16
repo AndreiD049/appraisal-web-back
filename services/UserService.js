@@ -1,5 +1,5 @@
-const UserModel = require('../models/UserModel');
-const OrganizationModel = require('../models/OrganizationModel');
+const { UserModel } = require('../models/UserModel');
+const { OrganizationModel } = require('../models/OrganizationModel');
 
 const UserService = {
   populate: (doc) => doc

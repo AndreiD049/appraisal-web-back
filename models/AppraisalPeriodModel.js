@@ -28,17 +28,14 @@ const AppraisalPeriodSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     required: false,
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -47,5 +44,9 @@ AppraisalPeriodSchema.set('toJSON', {
 });
 
 const AppraisalPeriodModel = mongoose.model('AppraisalPeriod', AppraisalPeriodSchema);
+const AppraisalPeriodsView = mongoose.model('AppraisalPeriodsView', AppraisalPeriodSchema, 'AppraisalPeriodsView', true);
 
-module.exports = AppraisalPeriodModel;
+module.exports = {
+  AppraisalPeriodModel,
+  AppraisalPeriodsView,
+};

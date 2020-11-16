@@ -39,17 +39,14 @@ const PermissionSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -60,5 +57,9 @@ PermissionSchema.set('toJSON', {
 });
 
 const PermissionModel = mongoose.model('Permission', PermissionSchema);
+const PermissionsView = mongoose.model('PermissionsView', PermissionSchema, 'PermissionsView', true);
 
-module.exports = PermissionModel;
+module.exports = {
+  PermissionModel,
+  PermissionsView,
+};

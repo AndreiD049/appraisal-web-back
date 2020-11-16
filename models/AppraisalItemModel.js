@@ -65,17 +65,14 @@ const AppraisalItemSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -84,7 +81,7 @@ AppraisalItemSchema.set('toJSON', {
 });
 
 const AppraisalItemModel = mongoose.model('AppraisalItem', AppraisalItemSchema);
-const AppraisalItemsView = mongoose.model('AppraisalItemsView', AppraisalItemSchema, 'AppraisalItemsView');
+const AppraisalItemsView = mongoose.model('AppraisalItemsView', AppraisalItemSchema, 'AppraisalItemsView', true);
 
 module.exports = {
   AppraisalItemModel,

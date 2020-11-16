@@ -41,7 +41,7 @@ appraisalItemsRouter.delete('/:id', AuthorizeReq('APPRAISAL DETAILS', 'delete'),
   try {
     const { id } = req.params;
     // Insert item
-    await AppraisalService.deleteItem(id);
+    await AppraisalService.deleteItem(id, req.user);
     res.status(204).end();
   } catch (err) {
     next(err);

@@ -22,17 +22,14 @@ const ActionPointSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    required: true,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     ref: 'User',
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -41,8 +38,10 @@ ActionPointSchema.set('toJSON', {
 });
 
 const ActionPointModel = mongoose.model('ActionPoint', ActionPointSchema);
+const ActionPointsView = mongoose.model('ActionPointsView', ActionPointSchema, 'ActionPointsView', true);
 
 module.exports = {
   ActionPointSchema,
   ActionPointModel,
+  ActionPointsView,
 };

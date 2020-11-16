@@ -13,16 +13,14 @@ const OrganizationSchema = new mongoose.Schema({
     required: true,
     ref: 'User',
   },
-  createdDate: {
-    type: Date,
-    default: Date.now,
-  },
   modifiedUser: {
     type: mongoose.Types.ObjectId,
     required: false,
   },
-  modifiedDate: {
-    type: Date,
+}, {
+  timestamps: {
+    createdAt: 'createdDate',
+    updatedAt: 'modifiedDate',
   },
 });
 
@@ -31,5 +29,9 @@ OrganizationSchema.set('toJSON', {
 });
 
 const OrganizationModel = mongoose.model('Organization', OrganizationSchema);
+const OrganizationsView = mongoose.model('OrganizationsView', OrganizationSchema, 'OrganizationsView', true);
 
-module.exports = OrganizationModel;
+module.exports = {
+  OrganizationModel,
+  OrganizationsView,
+};
