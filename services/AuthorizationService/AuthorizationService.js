@@ -5,18 +5,6 @@ const AuthorizationService = {
   // Receives a user, a permission code, and a grant,
   // Returns true if user has this permission or not
   Authorize: async (user, code, grant) => {
-<<<<<<< HEAD
-    if (!user) return false;
-    const userDb = await UserService.getUser(user.id);
-    if (!userDb) return false;
-    const { id, role, organization } = userDb;
-    // Get user's permissions and check if grant is there
-    if (id) {
-      const userPermissions = await PermissionService.getUserPermissionsByCode(id, code);
-      if (userPermissions.length > 0) {
-        if (userPermissions.filter((r) => r.grants.indexOf(grant) !== -1).length > 0) {
-          return true;
-=======
     try {
       const { id, role, organization } = await UserService.getUser(user.id);
       // Get user's permissions and check if grant is there
@@ -27,7 +15,6 @@ const AuthorizationService = {
             return true;
           }
           return false;
->>>>>>> 3ff858cce089145d9979caa46d82eacc9a2a0648
         }
       }
       if (role) {
