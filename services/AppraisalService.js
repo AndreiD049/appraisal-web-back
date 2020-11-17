@@ -294,8 +294,16 @@ const AppraisalService = {
     await perform(validations);
 
     const { status } = item;
-    if (status === 'Finished') await this.unFinishItem(item);
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
+    const updateObject = update;
+    if (status === 'Finished') {
+      // if current item's status is finished, we will first unfinish it
+      // This is done to remove all related entries first
+      // Also, we delete the status property from the update object,
+      // as we will finish the item later
+      await this.unFinishItem(item);
+      delete updateObject.status;
+    }
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, updateObject, { new: true });
     if (status === 'Finished') await this.finishItem(updated);
     return updated;
   },
