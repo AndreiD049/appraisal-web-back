@@ -6,7 +6,6 @@ const {
   and, or, not, validate, perform,
 } = require('./validators');
 const { securities } = require('../config/constants');
-const { areEqual } = require('./validators/GeneralValidators');
 
 const AD = securities.APPRAISAL_DETAILS;
 const ADO = securities.APPRAISAL_DETAILS_OTHER;
@@ -224,8 +223,10 @@ const AppraisalService = {
     // const period = await this.getPeriodById(item?.periodId);
     const userDb = await UserService.getUser(user.id);
 
+    const prevalidations = validate.itemExists(item);
+    await perform(prevalidations);
+
     const validations = and([
-      validate.itemExists(item),
       or([
         not(validate.isTruthy(item.relatedItemId)),
         validate.areEqual(update.content, item.content, 'You cannot update an item with related entries'),
@@ -271,12 +272,16 @@ const AppraisalService = {
       this.getPeriodById(item?.periodId),
     ]);
 
-    const validations = and([
+    const prevalidations = and([
       validate.itemExists(item),
       validate.periodExists(period),
+    ]);
+    await perform(prevalidations);
+
+    const validations = and([
       or([
-        not(validate.isTruthy(item.relatedItemId)),
-        validate.areEqual(update.content, item.content, 'You cannot update an item with related entries'),
+        not(validate.isTruthy(item?.relatedItemId)),
+        validate.areEqual(update.content, item?.content, 'You cannot update an item with related entries'),
       ]),
       not(validate.itemSameUser(item, userFrom)),
       validate.userInTeam(userFrom, userTo),
@@ -318,8 +323,10 @@ const AppraisalService = {
     const item = await AppraisalItemModel.findById(itemId);
     const userDb = await UserService.getUser(user.id);
 
+    const prevalidation = validate.itemExists(item);
+    await perform(prevalidation);
+
     const validations = and([
-      validate.itemExists(item),
       not(validate.isTruthy(item.relatedItemId), 'Item has related entries. Can\'t delete'),
       not(validate.itemType(item, 'Training_Suggested')),
       or([
@@ -347,8 +354,10 @@ const AppraisalService = {
     const userFrom = await UserService.getUser(user.id);
     const userTo = await UserService.getUser(item.user);
 
+    const prevalidation = validate.itemExists(item);
+    await perform(prevalidation);
+
     const validations = and([
-      validate.itemExists(item),
       not(validate.isTruthy(item.relatedItemId), 'Item has related entries. Can\'t delete'),
       not(validate.itemSameUser(item, userFrom)),
       validate.userInTeam(userFrom, userTo),
