@@ -33,6 +33,7 @@ const AppraisalItemSchema = new mongoose.Schema({
   content: {
     type: String,
     required: true,
+    maxlength: 1000,
   },
   periodId: {
     type: mongoose.ObjectId,
