@@ -1,12 +1,13 @@
 const appraisalValidators = require('./AppraisalValidators');
 const userValidators = require('./UserValidators');
 const mongoValidators = require('./mongoValidators');
+const GeneralValidators = require('./GeneralValidators');
 
 /**
  * @param {Array.<function(): {result: boolean, message: string}>} validations
  * @return {function(): {result: boolean, message: string}} validations
  */
-const and = (validations) => async () => {
+const and = (validations, message = null) => async () => {
   try {
     if (validations.length === 0) {
       throw new Error('No validations provided');
@@ -19,7 +20,7 @@ const and = (validations) => async () => {
   } catch (err) {
     return {
       result: false,
-      message: err.message,
+      message: message || err.message,
     };
   }
 };
@@ -52,20 +53,23 @@ const andSync = (validations) => () => {
  * @param {Array.<function(): {result: boolean, message: string}>} validations
  * @return {function(): {result: boolean, message: string}} validations
  */
-const or = (validations) => async () => {
+const or = (validations, message = null) => async () => {
   try {
     if (validations.length === 0) {
       throw new Error('No validations provided');
     }
     const results = await Promise.all(validations.map((v) => v()));
     if (results.some((v) => v.result)) {
-      return results.find((v) => v.result);
+      const result = results.find((v) => v.result);
+      if (message) result.message = message;
+      return result;
     }
+    if (message) results[results.length - 1].message = message;
     return results[results.length - 1];
   } catch (err) {
     return {
       result: false,
-      message: 'error',
+      message: message || 'error',
     };
   }
 };
@@ -98,16 +102,16 @@ const orSync = (validations) => () => {
  * @param {function(): {result: boolean, message: string}} validations
  * @return {function(): {result: boolean, message: string}} validations
  */
-const not = (validation) => async () => {
+const not = (validation, message = null) => async () => {
   try {
     const val = await validation();
     val.result = !val.result;
-    val.message = `Not - ${val.message}`;
+    val.message = message || `Not - ${val.message}`;
     return val;
   } catch (err) {
     return {
       result: false,
-      message: 'error',
+      message: message || 'error',
     };
   }
 };
@@ -116,15 +120,16 @@ const not = (validation) => async () => {
  * @param {function(): {result: boolean, message: string}} validations
  * @return {function(): {result: boolean, message: string}} validations
  */
-const notSync = (validation) => () => {
+const notSync = (validation, message = null) => () => {
   try {
     const val = validation();
     val.result = !val.result;
+    val.message = message || val.message;
     return val;
   } catch (err) {
     return {
       result: false,
-      message: 'error',
+      message: message || 'error',
     };
   }
 };
@@ -160,5 +165,6 @@ module.exports = {
     ...appraisalValidators,
     ...userValidators,
     ...mongoValidators,
+    ...GeneralValidators,
   },
 };

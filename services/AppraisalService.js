@@ -6,6 +6,7 @@ const {
   and, or, not, validate, perform,
 } = require('./validators');
 const { securities } = require('../config/constants');
+const { areEqual } = require('./validators/GeneralValidators');
 
 const AD = securities.APPRAISAL_DETAILS;
 const ADO = securities.APPRAISAL_DETAILS_OTHER;
@@ -225,6 +226,10 @@ const AppraisalService = {
 
     const validations = and([
       validate.itemExists(item),
+      or([
+        not(validate.isTruthy(item.relatedItemId)),
+        validate.areEqual(update.content, item.content, 'You cannot update an item with related entries'),
+      ]),
       not(validate.itemType(item, 'Training_Suggested')),
       or([
         and([
@@ -240,8 +245,17 @@ const AppraisalService = {
     await perform(validations);
 
     const { status } = item;
-    if (status === 'Finished') await this.unFinishItem(item);
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, update, { new: true });
+
+    const updateObject = update;
+    if (status === 'Finished') {
+      // if current item's status is finished, we will first unfinish it
+      // This is done to remove all related entries first
+      // Also, we delete the status property from the update object,
+      // as we will finish the item later
+      await this.unFinishItem(item);
+      delete updateObject.status;
+    }
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, updateObject, { new: true });
     if (status === 'Finished') await this.finishItem(item);
     return updated;
   },
@@ -260,6 +274,10 @@ const AppraisalService = {
     const validations = and([
       validate.itemExists(item),
       validate.periodExists(period),
+      or([
+        not(validate.isTruthy(item.relatedItemId)),
+        validate.areEqual(update.content, item.content, 'You cannot update an item with related entries'),
+      ]),
       not(validate.itemSameUser(item, userFrom)),
       validate.userInTeam(userFrom, userTo),
       or([
@@ -294,6 +312,7 @@ const AppraisalService = {
 
     const validations = and([
       validate.itemExists(item),
+      not(validate.isTruthy(item.relatedItemId), 'Item has related entries. Can\'t delete'),
       not(validate.itemType(item, 'Training_Suggested')),
       or([
         and([
@@ -322,6 +341,7 @@ const AppraisalService = {
 
     const validations = and([
       validate.itemExists(item),
+      not(validate.isTruthy(item.relatedItemId), 'Item has related entries. Can\'t delete'),
       not(validate.itemSameUser(item, userFrom)),
       validate.userInTeam(userFrom, userTo),
       or([
@@ -367,10 +387,17 @@ const AppraisalService = {
    *    - periodId eq to null
    *    - relatedItemId eq to original item _id
    *    After, set the original item to Finished
+   * 3. If item is already finished, throw an error and abort transaction
    */
   async finishItem(item, session = null) {
     const itemDb = await AppraisalItemModel.findById(item.id);
-    // await validations.validateItemFinish(itemDb);
+
+    const validations = and([
+      not(validate.itemStatus(itemDb, 'Finished')),
+      validate.isTruthy(itemDb.periodId, 'Item has no period. Can\'t finish.'),
+    ]);
+    await perform(validations);
+
     if (itemDb.type === 'Planned') {
       const copy = await this.copyItem(itemDb, session);
       copy.status = 'Active';
@@ -388,6 +415,10 @@ const AppraisalService = {
     if (!currentSession) currentSession = await AppraisalPeriodModel.startSession();
     const transaction = await currentSession.withTransaction(async () => {
       const itemDb = await AppraisalItemModel.findById(item.id);
+      const validations = and([
+        validate.itemStatus(itemDb, 'Finished'),
+      ]);
+      await perform(validations);
       /**
        * if item is 'Planned', we need to find it's related item and delete it
        */
