@@ -78,20 +78,18 @@ const AppraisalService = {
     let userPeriod = period.users.find((u) => String(u._id) === String(userId));
     // If period doesn't exist, add it
     if (!userPeriod) {
-      const periodUpd = await this.addUserToPeriod(period.id, userId);
+      const periodUpd = await this.addUserToPeriod(period.id, userDb);
       userPeriod = periodUpd.users.find((u) => String(u._id) === String(userId));
     }
     userPeriod.locked = !userPeriod.locked;
-    period.users = period.users.map((up) => {
-      if (String(up._id) !== userId) return up;
-      return userPeriod;
-    });
-    return period.save();
+    return AppraisalPeriodModel.findByIdAndUpdate(periodId, {
+      users: period.users.filter((up) => (String(up._id) !== userId)).concat(userPeriod),
+    }, { new: true });
   },
 
   async addUserToPeriod(periodId, user) {
-    if (user) {
-      const userId = user.id || user._id;
+    const userId = user?.id || user?._id;
+    if (userId) {
       const newUser = new UserPeriodModel({
         _id: userId,
         locked: false,
@@ -187,7 +185,10 @@ const AppraisalService = {
     const validations = and([
       validate.userExists(userDb),
       validate.itemExists(item),
-      not(validate.periodLocked(period, userDb.id), 'Cannot add items to locked period'),
+      or([
+        validate.periodStatus(period, 'Finished'),
+        not(validate.periodLocked(period, userDb.id), 'Cannot add items to locked period'),
+      ]),
       validate.periodExists(period),
       not(validate.itemType(item, 'Training_Suggested')),
       validate.itemSameUser(item, userDb),
@@ -285,6 +286,7 @@ const AppraisalService = {
     const validations = and([
       or([
         not(validate.periodExists(period)),
+        validate.periodStatus(period, 'Finished'),
         not(validate.periodLocked(period, userDb.id), 'Cannot update items in a locked period'),
       ]),
       or([
@@ -392,6 +394,7 @@ const AppraisalService = {
       not(validate.itemType(item, 'Training_Suggested')),
       or([
         not(validate.periodExists(period)),
+        validate.periodStatus(period, 'Finished'),
         not(validate.periodLocked(period, userDb.id), 'Cannot delete items in a locked period'),
       ]),
       or([
