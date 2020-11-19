@@ -285,11 +285,7 @@ const AppraisalService = {
     const validations = and([
       or([
         not(validate.periodExists(period)),
-<<<<<<< HEAD
         not(validate.periodLocked(period, userDb.id), 'Cannot update items in a locked period'),
-=======
-        not(validate.periodLocked(period, userDb.id), 'Cannot update items in a locked period')
->>>>>>> 8480afb35cc6f6d794c5a50daf8a879c0e429188
       ]),
       or([
         not(validate.isTruthy(item.relatedItemId)),
