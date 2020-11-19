@@ -1,3 +1,6 @@
+# mongo-migrations
+migrate-mongo-config.js
+
 # Logs
 logs
 *.log

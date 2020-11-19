@@ -34,6 +34,7 @@ const constants = {
         createFinished: 'create-finished',
         updateFinished: 'update-finished',
         deleteFinished: 'delete-finished',
+        toggleLock: 'toggle-lock',
       },
     },
     APPRAISAL_PERIODS: {

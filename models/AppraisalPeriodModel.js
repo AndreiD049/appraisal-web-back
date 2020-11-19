@@ -3,6 +3,19 @@ const { toJSON } = require('./dbutils');
 
 const validStatuses = ['Active', 'Finished'];
 
+const UserPeriodSchema = new mongoose.Schema({
+  _id: {
+    type: mongoose.Types.ObjectId,
+    required: true,
+    unique: true,
+  },
+  locked: {
+    type: Boolean,
+    required: false,
+    default: false,
+  },
+});
+
 const AppraisalPeriodSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -19,10 +32,7 @@ const AppraisalPeriodSchema = new mongoose.Schema({
     type: mongoose.ObjectId,
     required: true,
   },
-  users: [{
-    type: mongoose.Types.ObjectId,
-    default: [],
-  }],
+  users: [UserPeriodSchema],
   createdUser: {
     type: mongoose.Types.ObjectId,
     required: true,
@@ -44,9 +54,11 @@ AppraisalPeriodSchema.set('toJSON', {
 });
 
 const AppraisalPeriodModel = mongoose.model('AppraisalPeriod', AppraisalPeriodSchema);
+const UserPeriodModel = mongoose.model('UserPeriod', AppraisalPeriodSchema);
 const AppraisalPeriodsView = mongoose.model('AppraisalPeriodsView', AppraisalPeriodSchema, 'AppraisalPeriodsView', true);
 
 module.exports = {
   AppraisalPeriodModel,
+  UserPeriodModel,
   AppraisalPeriodsView,
 };

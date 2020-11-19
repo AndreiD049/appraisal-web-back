@@ -134,22 +134,22 @@ const notSync = (validation, message = null) => () => {
   }
 };
 
-const perform = async (validation) => {
+const perform = async (validation, throwEx = true) => {
   const v = await validation();
   if (!v.result) {
-    throw new Error(v.message);
-  } else {
+    if (throwEx) throw new Error(v.message);
     return v;
   }
+  return v;
 };
 
-const performSync = (validation) => {
+const performSync = (validation, throwEx = true) => {
   const v = validation();
   if (!v.result) {
-    throw new Error(v.message);
-  } else {
+    if (throwEx) throw new Error(v.message);
     return v;
   }
+  return v;
 };
 
 module.exports = {

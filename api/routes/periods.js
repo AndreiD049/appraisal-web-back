@@ -1,7 +1,12 @@
 const appraisalPeriodsRouter = require('express').Router();
+const constants = require('../../config/constants');
 const AppraisalService = require('../../services/AppraisalService');
 const UserService = require('../../services/UserService');
 const { AuthorizeReq } = require('../../services/AuthorizationService').AuthorizationService;
+
+const AP = constants.securities.APPRAISAL_PERIODS;
+const AD = constants.securities.APPRAISAL_DETAILS;
+const ADO = constants.securities.APPRAISAL_DETAILS_OTHER;
 
 // Get users active periods
 appraisalPeriodsRouter.get('/', AuthorizeReq('APPRAISAL PERIODS', 'read'), async (req, res, next) => {
@@ -34,8 +39,8 @@ appraisalPeriodsRouter.get('/:id', AuthorizeReq('APPRAISAL PERIODS', 'read'), as
     const period = (await AppraisalService.getPeriodById(periodId)).toJSON();
     // Check if current user is within the period users
     // If not, it's the first time user accesses the period
-    if (!period.users.find((u) => String(u) === String(req.user.id))) {
-      await AppraisalService.updatePeriod(period.id, { users: period.users.concat(req.user.id) });
+    if (!period.users.find((u) => String(u?._id) === String(req.user.id))) {
+      await AppraisalService.addUserToPeriod(periodId, req.user);
     }
 
     // check if there are any orphan appraisal items to add them here
@@ -50,7 +55,6 @@ appraisalPeriodsRouter.get('/:id', AuthorizeReq('APPRAISAL PERIODS', 'read'), as
   }
 });
 
-// TODO: POST /api/periods/:id/finish
 // Finish period and all it's items for the current user
 appraisalPeriodsRouter.post('/:id/finish', AuthorizeReq('APPRAISAL PERIODS', 'finish'), async (req, res, next) => {
   try {
@@ -60,6 +64,25 @@ appraisalPeriodsRouter.post('/:id/finish', AuthorizeReq('APPRAISAL PERIODS', 'fi
       res.status(400).end();
     } else {
       res.status(200).end();
+    }
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * toggle user period lock status
+ * Only users who have access to toggle lock are able to do it
+ */
+appraisalPeriodsRouter.post('/:periodId/users/:userId/toggle-lock', AuthorizeReq(ADO.code, ADO.grants.toggleLock), async (req, res, next) => {
+  try {
+    const { periodId } = req.params;
+    const { userId } = req.params;
+    const result = await AppraisalService.toggleLockPeriod(periodId, userId, req.user);
+    if (!result) {
+      res.status(400).end();
+    } else {
+      res.json(result);
     }
   } catch (err) {
     next(err);
