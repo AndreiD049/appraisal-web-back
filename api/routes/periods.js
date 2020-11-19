@@ -34,8 +34,8 @@ appraisalPeriodsRouter.get('/:id', AuthorizeReq('APPRAISAL PERIODS', 'read'), as
     const period = (await AppraisalService.getPeriodById(periodId)).toJSON();
     // Check if current user is within the period users
     // If not, it's the first time user accesses the period
-    if (!period.users.find((u) => String(u) === String(req.user.id))) {
-      await AppraisalService.updatePeriod(period.id, { users: period.users.concat(req.user.id) });
+    if (!period.users.find((u) => String(u?._id) === String(req.user.id))) {
+      await AppraisalService.addUserToPeriod(periodId, req.user);
     }
 
     // check if there are any orphan appraisal items to add them here

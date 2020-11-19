@@ -1,4 +1,4 @@
-const { AppraisalPeriodModel } = require('../models/AppraisalPeriodModel');
+const { AppraisalPeriodModel, UserPeriodModel } = require('../models/AppraisalPeriodModel');
 const { AppraisalItemModel } = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const { UserModel } = require('../models/UserModel');
@@ -20,7 +20,7 @@ const AppraisalService = {
      */
     const dbUser = await UserModel.findById(user.id);
     const docs = await AppraisalPeriodModel.find().or([
-      { users: dbUser.id, status: 'Finished' },
+      { 'users._id': dbUser.id, status: 'Finished' },
       { status: 'Active', organizationId: dbUser.organization },
     ]).populate({ path: 'createdUser', select: 'username' });
     return docs;
@@ -58,6 +58,20 @@ const AppraisalService = {
     return newPeriod;
   },
 
+  async addUserToPeriod(periodId, user) {
+    if (user) {
+      const newUser = new UserPeriodModel({
+        _id: user.id || user._id,
+        locked: false,
+      });
+      const periodDb = await AppraisalPeriodModel.findById(periodId);
+      const users = periodDb.users.slice();
+      periodDb.users = users.concat(newUser);
+      return periodDb.save();
+    }
+    return null;
+  },
+
   /**
    * Adding orphan items to period when user first time enters an appraisal period.
    * An orphan item is an item:
@@ -67,7 +81,12 @@ const AppraisalService = {
   async addOrphanUserItemsToPeriod(periodId, userId) {
     const period = await this.getPeriodById(periodId);
 
-    const validations = await not(validate.periodStatus(period, 'Finished'))();
+    // Do not do anything if period is already finished or locked
+    const validations = await perform(not(or([
+      validate.periodStatus(period, 'Finished'),
+      validate.periodLocked(period, userId),
+    ])), false);
+    // await not(validate.periodStatus(period, 'Finished'))();
     if (validations.result) {
       const orphans = await AppraisalItemModel.find({
         user: userId,
@@ -132,6 +151,7 @@ const AppraisalService = {
     const validations = and([
       validate.userExists(userDb),
       validate.itemExists(item),
+      not(validate.periodLocked(period, userDb.id), 'Cannot add items to locked period'),
       validate.periodExists(period),
       not(validate.itemType(item, 'Training_Suggested')),
       validate.itemSameUser(item, userDb),
@@ -220,13 +240,17 @@ const AppraisalService = {
    */
   async updateItem(itemId, update, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    // const period = await this.getPeriodById(item?.periodId);
+    const period = await this.getPeriodById(item?.periodId);
     const userDb = await UserService.getUser(user.id);
 
     const prevalidations = validate.itemExists(item);
     await perform(prevalidations);
 
     const validations = and([
+      or([
+        not(validate.periodExists(period)),
+        not(validate.periodLocked(period, userDb.id), 'Cannot update items in a locked period')
+      ]),
       or([
         not(validate.isTruthy(item.relatedItemId)),
         validate.areEqual(update.content, item.content, 'You cannot update an item with related entries'),
@@ -322,6 +346,7 @@ const AppraisalService = {
   async deleteItem(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
     const userDb = await UserService.getUser(user.id);
+    const period = await AppraisalService.getPeriodById(item?.periodId);
 
     const prevalidation = validate.itemExists(item);
     await perform(prevalidation);
@@ -329,6 +354,10 @@ const AppraisalService = {
     const validations = and([
       not(validate.isTruthy(item.relatedItemId), 'Item has related entries. Can\'t delete'),
       not(validate.itemType(item, 'Training_Suggested')),
+      or([
+        not(validate.periodExists(period)),
+        not(validate.periodLocked(period, userDb.id), 'Cannot delete items in a locked period'),
+      ]),
       or([
         and([
           not(validate.itemStatus(item, 'Finished')),

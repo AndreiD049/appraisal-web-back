@@ -20,6 +20,14 @@ const periodStatus = (period, status) => async () => ({
   message: `Period '${period.name}' status is not valid. Expected (${status})`,
 });
 
+const periodLocked = (period, userId, message = null) => async () => {
+  const item = period.users.find((u) => String(u._id) === String(userId));
+  return {
+    result: Boolean(item.locked),
+    message: message || `Period '${period.name}' is not locked`,
+  };
+};
+
 const itemStatus = (item, status) => async () => ({
   result: Boolean(item.status === status),
   message: `Item '${item.content}' status is not valid. Expected '${status}'.`,
@@ -42,4 +50,5 @@ module.exports = {
   itemStatus,
   itemType,
   itemSameUser,
+  periodLocked,
 };
