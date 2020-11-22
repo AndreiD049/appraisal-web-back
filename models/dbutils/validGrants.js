@@ -16,6 +16,7 @@ const validGrants = [
   'appraisal-items',
   'appraisal-periods',
   'permissions',
+  'toggle-lock',
 ];
 
 module.exports = validGrants;

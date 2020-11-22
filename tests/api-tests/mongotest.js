@@ -1,12 +1,6 @@
 const mongoose = require('mongoose');
 const config = require('../../config');
-const { PermissionCodeModel } = require('../../models/PermissionCodeModel');
-const { UserModel } = require('../../models/UserModel');
-const { RoleService, AuthorizationService, PermissionService } = require('../../services/AuthorizationService');
-const UserService = require('../../services/UserService');
-const Audits = require('../../models/Audits');
 const { AuditService } = require('../../services/Audit');
-const { AuditModel } = require('../../models/Audits/AuditModel');
 
 async function run() {
   try {
