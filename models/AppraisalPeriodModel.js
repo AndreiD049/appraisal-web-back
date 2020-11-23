@@ -7,7 +7,6 @@ const UserPeriodSchema = new mongoose.Schema({
   _id: {
     type: mongoose.Types.ObjectId,
     required: true,
-    unique: true,
   },
   locked: {
     type: Boolean,

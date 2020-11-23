@@ -4,7 +4,8 @@ const { AuthorizeReq } = require('../../services/AuthorizationService').Authoriz
 
 appraisalItemsRouter.get('/', AuthorizeReq('APPRAISAL DETAILS', 'read'), async (req, res, next) => {
   try {
-    const items = await AppraisalService.getOrphanItems(req.user);
+    const { type } = req.query;
+    const items = await AppraisalService.getOrphanItems(req.user, type);
     res.json(items);
   } catch (err) {
     next(err);

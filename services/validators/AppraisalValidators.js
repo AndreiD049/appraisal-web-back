@@ -15,17 +15,33 @@ const itemExists = (item) => async () => ({
   message: 'Item doesn\'t exist.',
 });
 
-const periodStatus = (period, status) => async () => ({
-  result: Boolean(period.status === status),
-  message: `Period '${period.name}' status is not valid. Expected (${status})`,
-});
+const periodStatus = (period, status, message = null) => async () => {
+  try {
+    return {
+      result: Boolean(period.status === status),
+      message: `Period '${period.name}' status is not valid. Expected (${status})`,
+    };
+  } catch (err) {
+    return {
+      result: false,
+      message: message || err.message,
+    };
+  }
+};
 
 const periodLocked = (period, userId, message = null) => async () => {
-  const item = period.users.find((u) => String(u._id) === String(userId));
-  return {
-    result: Boolean(item.locked),
-    message: message || `Period '${period.name}' is not locked`,
-  };
+  try {
+    const item = period.users.find((u) => String(u._id) === String(userId));
+    return {
+      result: Boolean(item.locked),
+      message: message || `Period '${period.name}' is not locked`,
+    };
+  } catch (err) {
+    return {
+      result: false,
+      message: message || err.message,
+    };
+  }
 };
 
 const itemStatus = (item, status) => async () => ({

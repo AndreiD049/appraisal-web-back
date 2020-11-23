@@ -31,15 +31,22 @@ const AppraisalService = {
    * @param {object} user
    * Returns Orphan items for the user.
    */
-  async getOrphanItems(user) {
+  async getOrphanItems(user, type = null) {
     // invalid user, or no organization
     if (!user || !user.organization) {
       return [];
     }
-    const result = await AppraisalItemModel.find({
+
+    const query = {
       user: user.id,
       periodId: null,
-    });
+    };
+
+    if (type) {
+      query.type = type;
+    }
+
+    const result = await AppraisalItemModel.find(query);
     return result;
   },
 
@@ -478,7 +485,7 @@ const AppraisalService = {
     ]);
     await perform(validations);
 
-    if (itemDb.type === 'Planned') {
+    if (['Planned', 'Training_Planned'].indexOf(itemDb.type) !== -1) {
       const copy = await this.copyItem(itemDb, session);
       copy.status = 'Active';
       copy.periodId = null;

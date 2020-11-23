@@ -4,8 +4,6 @@ const { toJSON } = require('./dbutils');
 const validItemTypes = [
   'Planned',
   'Achieved',
-  'Training',
-  'Training_Suggested',
   'Training_Planned',
   'Training_Achieved',
   'SWOT_S',

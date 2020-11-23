@@ -18,6 +18,7 @@ const and = (validations, message = null) => async () => {
     }
     return results.find((v) => v.result === false);
   } catch (err) {
+    console.error(err);
     return {
       result: false,
       message: message || err.message,
@@ -42,6 +43,7 @@ const andSync = (validations) => () => {
     }
     return last;
   } catch (err) {
+    console.error(err);
     return {
       result: false,
       message: 'error',
@@ -67,6 +69,7 @@ const or = (validations, message = null) => async () => {
     if (message) results[results.length - 1].message = message;
     return results[results.length - 1];
   } catch (err) {
+    console.error(err);
     return {
       result: false,
       message: message || 'error',
@@ -91,6 +94,7 @@ const orSync = (validations) => () => {
     }
     return last;
   } catch (err) {
+    console.error(err);
     return {
       result: false,
       message: 'error',
@@ -109,6 +113,7 @@ const not = (validation, message = null) => async () => {
     val.message = message || `Not - ${val.message}`;
     return val;
   } catch (err) {
+    console.error(err);
     return {
       result: false,
       message: message || 'error',
@@ -127,6 +132,7 @@ const notSync = (validation, message = null) => () => {
     val.message = message || val.message;
     return val;
   } catch (err) {
+    console.error(err);
     return {
       result: false,
       message: message || 'error',
