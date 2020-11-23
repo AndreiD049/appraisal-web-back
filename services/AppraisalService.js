@@ -176,7 +176,6 @@ const AppraisalService = {
    *  Validation rules:
    *    1. I cannot insert the item if the period has status Finished
    *    2. I cannot insert the item if the body is not valid
-   *    3. I cannot insert an item of Training Suggested for myself
    */
   async addItemToPeriod(periodId, item, user) {
     const period = await this.getPeriodById(periodId);
@@ -190,7 +189,6 @@ const AppraisalService = {
         not(validate.periodLocked(period, userDb.id), 'Cannot add items to locked period'),
       ]),
       validate.periodExists(period),
-      not(validate.itemType(item, 'Training_Suggested')),
       validate.itemSameUser(item, userDb),
       or([
         and([
@@ -293,7 +291,6 @@ const AppraisalService = {
         not(validate.isTruthy(item.relatedItemId)),
         validate.areEqual(update.content, item.content, 'You cannot update an item with related entries'),
       ]),
-      not(validate.itemType(item, 'Training_Suggested')),
       or([
         and([
           not(validate.itemStatus(item, 'Finished')),
@@ -379,7 +376,6 @@ const AppraisalService = {
    * Validation:
    * 1. I cannot delete an item that is already finished
    * 2. I cannot delete an item whose period is already finished
-   * 3. I cannot delete an Training suggested item of myself
    */
   async deleteItem(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
@@ -391,7 +387,6 @@ const AppraisalService = {
 
     const validations = and([
       not(validate.isTruthy(item.relatedItemId), 'Item has related entries. Can\'t delete'),
-      not(validate.itemType(item, 'Training_Suggested')),
       or([
         not(validate.periodExists(period)),
         validate.periodStatus(period, 'Finished'),
