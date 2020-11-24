@@ -18,7 +18,7 @@ const TeamService = {
         createdDate: new Date(),
       });
 
-      return (await newTeam.save());
+      return await newTeam.save();
     } catch (err) {
       throw err;
     }

@@ -7,12 +7,9 @@
 const mongoose = require('mongoose');
 
 const viewExists = (view) => async () => ({
-  result: ((await mongoose
-    .connection
-    .db
-    .listCollections()
-    .toArray())
-    .filter((c) => c.name === view).length > 0),
+  result:
+    (await mongoose.connection.db.listCollections().toArray()).filter((c) => c.name === view)
+      .length > 0,
   message: `View ${view} doesn't exist`,
 });
 

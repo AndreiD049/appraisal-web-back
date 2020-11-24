@@ -79,7 +79,8 @@ const ReportingService = {
             test: { $group: { _id: '$user', test: 2 } },
           },
         },
-      ]).unwind({ path: '$period', preserveNullAndEmptyArrays: true })
+      ])
+        .unwind({ path: '$period', preserveNullAndEmptyArrays: true })
         .unwind({ path: '$user', preserveNullAndEmptyArrays: true })
         .unwind({ path: '$createdUser', preserveNullAndEmptyArrays: true })
         .unwind({ path: '$organization', preserveNullAndEmptyArrays: true })
@@ -88,7 +89,7 @@ const ReportingService = {
     },
   },
   async getAppraisalReport(templatePath, user, f) {
-    const data = await this.views.appraisalItems({ });
+    const data = await this.views.appraisalItems({});
     console.log(data);
     const result = carbone.render(templatePath, data, (err, result) => {
       if (err) {

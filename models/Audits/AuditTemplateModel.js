@@ -1,26 +1,29 @@
 const mongoose = require('mongoose');
 const { toJSON } = require('../dbutils');
 
-const AuditPointTemplateSchema = new mongoose.Schema({
-  point: {
-    type: String,
-    required: true,
+const AuditPointTemplateSchema = new mongoose.Schema(
+  {
+    point: {
+      type: String,
+      required: true,
+    },
+    createdUser: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: 'User',
+    },
+    modifiedUser: {
+      type: mongoose.Types.ObjectId,
+      ref: 'User',
+    },
   },
-  createdUser: {
-    type: mongoose.Types.ObjectId,
-    required: true,
-    ref: 'User',
+  {
+    timestamps: {
+      createdAt: 'createdDate',
+      updatedAt: 'modifiedDate',
+    },
   },
-  modifiedUser: {
-    type: mongoose.Types.ObjectId,
-    ref: 'User',
-  },
-}, {
-  timestamps: {
-    createdAt: 'createdDate',
-    updatedAt: 'modifiedDate',
-  },
-});
+);
 
 const AuditPointTemplateModel = mongoose.model('AuditPointTempalte', AuditPointTemplateSchema);
 
@@ -35,11 +38,13 @@ const AuditTemplateSchema = new mongoose.Schema({
     required: true,
     ref: 'Organization',
   },
-  auditPoints: [{
-    type: AuditPointTemplateSchema,
-    required: false,
-    default: [],
-  }],
+  auditPoints: [
+    {
+      type: AuditPointTemplateSchema,
+      required: false,
+      default: [],
+    },
+  ],
   createdUser: {
     type: mongoose.Types.ObjectId,
     required: true,
@@ -64,7 +69,12 @@ AuditTemplateSchema.set('toJSON', {
 });
 
 const AuditTemplateModel = mongoose.model('AuditTemplate', AuditTemplateSchema);
-const AuditTemplatesView = mongoose.model('AuditTemplatesView', AuditTemplateSchema, 'AuditTemplatesView', true);
+const AuditTemplatesView = mongoose.model(
+  'AuditTemplatesView',
+  AuditTemplateSchema,
+  'AuditTemplatesView',
+  true,
+);
 
 module.exports = {
   AuditTemplateSchema,

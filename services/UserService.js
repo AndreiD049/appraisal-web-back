@@ -2,11 +2,12 @@ const { UserModel } = require('../models/UserModel');
 const { OrganizationModel } = require('../models/OrganizationModel');
 
 const UserService = {
-  populate: (doc) => doc
-    .populate({ path: 'role', select: 'name securityLevel' })
-    .populate({ path: 'teams', select: 'name' })
-    .populate({ path: 'organizations', select: 'name' })
-    .populate({ path: 'organization', select: 'name' }),
+  populate: (doc) =>
+    doc
+      .populate({ path: 'role', select: 'name securityLevel' })
+      .populate({ path: 'teams', select: 'name' })
+      .populate({ path: 'organizations', select: 'name' })
+      .populate({ path: 'organization', select: 'name' }),
 
   async getUser(id) {
     const user = await this.populate(UserModel.findById(id));
@@ -14,23 +15,27 @@ const UserService = {
   },
 
   async getUserByUsername(username) {
-    const user = await this.populate(UserModel.find({
-      username,
-    }));
+    const user = await this.populate(
+      UserModel.find({
+        username,
+      }),
+    );
     return user.length ? user[0] : null;
   },
 
   async updateUser(user) {
-    const updatedUser = await this
-      .populate(UserModel.findByIdAndUpdate(user.id, user, { new: true }));
+    const updatedUser = await this.populate(
+      UserModel.findByIdAndUpdate(user.id, user, { new: true }),
+    );
     return updatedUser;
   },
 
   async updateSelf(user) {
     const arg = user;
     delete arg.organizations;
-    const updatedUser = await this
-      .populate(UserModel.findByIdAndUpdate(arg.id, arg, { new: true }));
+    const updatedUser = await this.populate(
+      UserModel.findByIdAndUpdate(arg.id, arg, { new: true }),
+    );
     return updatedUser;
   },
 
@@ -56,9 +61,11 @@ const UserService = {
 
   async getOrganizationUsers(user) {
     const dbUser = await UserModel.findById(user.id);
-    const result = await this.populate(UserModel.find({
-      organizations: dbUser.organization,
-    }));
+    const result = await this.populate(
+      UserModel.find({
+        organizations: dbUser.organization,
+      }),
+    );
     return result;
   },
 
@@ -100,7 +107,10 @@ const UserService = {
         },
       },
     ]);
-    const result = await UserModel.populate(members, { path: 'teams organizations organization role', select: 'name' });
+    const result = await UserModel.populate(members, {
+      path: 'teams organizations organization role',
+      select: 'name',
+    });
     return result;
   },
 
@@ -137,7 +147,10 @@ const UserService = {
         },
       },
     ]);
-    const result = await UserModel.populate(members, { path: 'teams organizations organization role', select: 'name' });
+    const result = await UserModel.populate(members, {
+      path: 'teams organizations organization role',
+      select: 'name',
+    });
     return result;
   },
 
@@ -175,7 +188,6 @@ const UserService = {
     if (slAsking === slTarget) return 0;
     return 1;
   },
-
 };
 
 module.exports = UserService;

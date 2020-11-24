@@ -7,12 +7,12 @@
 
 const periodExists = (period) => async () => ({
   result: Boolean(period),
-  message: 'Period doesn\'t exist.',
+  message: "Period doesn't exist.",
 });
 
 const itemExists = (item) => async () => ({
   result: Boolean(item),
-  message: 'Item doesn\'t exist.',
+  message: "Item doesn't exist.",
 });
 
 const periodStatus = (period, status, message = null) => async () => {

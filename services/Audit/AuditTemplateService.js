@@ -2,14 +2,18 @@ const { AuditTemplateModel } = require('../../models/Audits/AuditTemplateModel')
 
 const AuditTemplateService = {
   async populate(doc) {
-    return doc
-      .populate({ path: 'organization', select: 'name' });
+    return doc.populate({ path: 'organization', select: 'name' });
   },
 
   async getAuditTemplates(user) {
-    const templates = this.populate(await AuditTemplateModel.find({
-      organization: user.organization.id,
-    }, 'template auditPoints organization'));
+    const templates = this.populate(
+      await AuditTemplateModel.find(
+        {
+          organization: user.organization.id,
+        },
+        'template auditPoints organization',
+      ),
+    );
     return templates;
   },
 
@@ -24,7 +28,7 @@ const AuditTemplateService = {
   },
 
   async addAuditTemplate(auditTemplate) {
-    const template = this.populate((new AuditTemplateModel(auditTemplate)).save());
+    const template = this.populate(new AuditTemplateModel(auditTemplate).save());
     return template;
   },
 

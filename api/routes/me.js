@@ -1,6 +1,6 @@
 const passport = require('passport');
-const UserService = require('../../services/UserService');
 const meRouter = require('express').Router();
+const UserService = require('../../services/UserService');
 const config = require('../../config');
 
 meRouter.get('/me', async (req, res, next) => {
@@ -14,45 +14,49 @@ meRouter.get('/me', async (req, res, next) => {
         next(err);
       }
       req.user = { ...session, ...userDB };
-      req.app.store.set(req.user.oid, req.user, (err) => {
-        if (err) next(err);
+      req.app.store.set(req.user.oid, req.user, (e) => {
+        if (e) next(e);
         res.json(req.user);
       });
     });
   }
 });
 
-meRouter.get('/login', (req, res, next) => {
-  try {
-    passport.authenticate('azuread-openidconnect', {
-      response: res,
-      failureRedirect: '/login',
-    })(req, res, next);
-  } catch (err) {
-    req.session.destroy();
-    next(err);
-  }
-},
-(req, res, next) => {
-  res.redirect('/');
-});
+meRouter.get(
+  '/login',
+  (req, res, next) => {
+    try {
+      passport.authenticate('azuread-openidconnect', {
+        response: res,
+        failureRedirect: '/login',
+      })(req, res, next);
+    } catch (err) {
+      req.session.destroy();
+      next(err);
+    }
+  },
+  (req, res) => {
+    res.redirect('/');
+  },
+);
 
-meRouter.get('/logout', (req, res, next) => {
+meRouter.get('/logout', (req, res) => {
   req.session.destroy();
   req.logout();
   res.redirect(config.creds.destroySessionUrl);
 });
 
-meRouter.post('/auth/openid/return',
+meRouter.post(
+  '/auth/openid/return',
   (req, res, next) => {
-    passport.authenticate('azuread-openidconnect',
-      {
-        response: res,
-        failureRedirect: '/login',
-      })(req, res, next);
+    passport.authenticate('azuread-openidconnect', {
+      response: res,
+      failureRedirect: '/login',
+    })(req, res, next);
   },
-  (req, res, next) => {
+  (req, res) => {
     res.redirect('/');
-  });
+  },
+);
 
 module.exports = meRouter;

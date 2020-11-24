@@ -16,31 +16,36 @@ const ParameterSchema = new mongoose.Schema({
   },
 });
 
-const ReportSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true,
+const ReportSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+    },
+    template: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: 'ReportTemplate',
+    },
+    description: {
+      type: String,
+      required: false,
+    },
+    parameters: [
+      {
+        type: ParameterSchema,
+        required: false,
+        default: [],
+      },
+    ],
   },
-  template: {
-    type: mongoose.Types.ObjectId,
-    required: true,
-    ref: 'ReportTemplate',
+  {
+    timestamps: {
+      createdAt: 'createdDate',
+      updatedAt: 'modifiedDate',
+    },
   },
-  description: {
-    type: String,
-    required: false,
-  },
-  parameters: [{
-    type: ParameterSchema,
-    required: false,
-    default: [],
-  }],
-}, {
-  timestamps: {
-    createdAt: 'createdDate',
-    updatedAt: 'modifiedDate',
-  },
-});
+);
 
 ReportSchema.set('toJSON', {
   transform: toJSON,

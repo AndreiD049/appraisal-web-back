@@ -30,7 +30,8 @@ reportingRouter.get('/', AuthorizeReq('REPORTS', 'read'), async (req, res, next)
  * Generated from template.
  * Used only as samples
  */
-reportingRouter.post('/template/generate',
+reportingRouter.post(
+  '/template/generate',
   AuthorizeReq('REPORT-TEMPLATES', 'create'),
   upload.single('template'),
   async (req, res, next) => {
@@ -43,7 +44,12 @@ reportingRouter.post('/template/generate',
       const data = await ReportTemplateService.processAggregation(aggregation, req.user);
       carbone.render(finalPath, data, { hardRefresh: true }, (err, result) => {
         if (err) return next(err);
-        const filePathResult = path.join(os.tmpdir(), req.user.id, 'results', req.file.originalname);
+        const filePathResult = path.join(
+          os.tmpdir(),
+          req.user.id,
+          'results',
+          req.file.originalname,
+        );
         fs.mkdirSync(path.join(os.tmpdir(), req.user.id, 'results'), { recursive: true });
         fs.writeFileSync(filePathResult, result);
         return res.json({
@@ -53,30 +59,35 @@ reportingRouter.post('/template/generate',
     } catch (err) {
       next(err);
     }
-  });
+  },
+);
 
 /**
  * Retrieve sample data
  */
-reportingRouter.post('/template/sample',
+reportingRouter.post(
+  '/template/sample',
   AuthorizeReq(securities.REPORT_TEMPLATES.code, securities.REPORT_TEMPLATES.grants.create),
   async (req, res, next) => {
     try {
       const { aggregation } = req.body;
-      const data = await ReportTemplateService
-        .sampleData(await ReportTemplateService
-          .formatData(await ReportTemplateService
-            .processAggregation(aggregation, req.user)));
+      const data = await ReportTemplateService.sampleData(
+        await ReportTemplateService.formatData(
+          await ReportTemplateService.processAggregation(aggregation, req.user),
+        ),
+      );
       res.json(data);
     } catch (err) {
       next(err);
     }
-  });
+  },
+);
 
 /**
  * Download the sample report generated from tempalte
  */
-reportingRouter.get('/template/generate',
+reportingRouter.get(
+  '/template/generate',
   AuthorizeReq(securities.REPORT_TEMPLATES.code, securities.REPORT_TEMPLATES.grants.create),
   async (req, res, next) => {
     try {
@@ -88,12 +99,14 @@ reportingRouter.get('/template/generate',
     } catch (err) {
       return next(err);
     }
-  });
+  },
+);
 
 /**
  * Create a new template
  */
-reportingRouter.post('/templates',
+reportingRouter.post(
+  '/templates',
   AuthorizeReq('REPORT-TEMPLATES', 'create'),
   upload.single('template'),
   async (req, res, next) => {
@@ -112,6 +125,7 @@ reportingRouter.post('/templates',
     } catch (err) {
       next(err);
     }
-  });
+  },
+);
 
 module.exports = reportingRouter;

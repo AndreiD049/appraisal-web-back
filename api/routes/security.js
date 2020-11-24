@@ -9,13 +9,13 @@ const validateBody = (body) => {
   };
   if (!body.grants) {
     result.valid = false;
-    result.errMessage = 'Permission should have \'grants\' field.';
+    result.errMessage = "Permission should have 'grants' field.";
   }
   if (!Array.isArray(body.grants)) {
     result.valid = false;
     result.errMessage = 'Grants shuld be an array';
   }
-  if (!body.permissionType || (['User', 'Role'].indexOf(body.permissionType) === -1)) {
+  if (!body.permissionType || ['User', 'Role'].indexOf(body.permissionType) === -1) {
     result.valid = false;
     result.errMessage = `permissionType is not valid - ${body.permissionType}`;
   }
@@ -56,14 +56,18 @@ securityRouter.use(async (req, res, next) => {
   next();
 });
 
-securityRouter.get('/roles', cacheRequest({ maxAge: 3600, mustRevalidate: true }), async (req, res, next) => {
-  try {
-    const roles = await RoleService.getRoles();
-    res.json(roles);
-  } catch (err) {
-    next(err);
-  }
-});
+securityRouter.get(
+  '/roles',
+  cacheRequest({ maxAge: 3600, mustRevalidate: true }),
+  async (req, res, next) => {
+    try {
+      const roles = await RoleService.getRoles();
+      res.json(roles);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 /**
  * Get current user's permissions
@@ -74,14 +78,16 @@ securityRouter.get('/permissions/me', async (req, res, next) => {
     if (!organization) {
       return res.json([]);
     }
-    const userPermissions = (await PermissionService.getUserPermissions(id)).filter((p) => p.code)
-      || [];
-    const rolePermissions = (await PermissionService
-      .getRolePermissions(role && role.id, organization.id)).filter((p) => p.code) || [];
+    const userPermissions =
+      (await PermissionService.getUserPermissions(id)).filter((p) => p.code) || [];
+    const rolePermissions =
+      (await PermissionService.getRolePermissions(role && role.id, organization.id)).filter(
+        (p) => p.code,
+      ) || [];
     const result = userPermissions;
     rolePermissions.forEach((element) => {
-      if (result.filter((el) => el.code.code
-      === element.code.code).length === 0) result.push(element);
+      if (result.filter((el) => el.code.code === element.code.code).length === 0)
+        result.push(element);
     });
     return res.json(result.map((s) => ({ code: s.code.code, grants: s.grants })));
   } catch (err) {
@@ -123,28 +129,36 @@ securityRouter.delete('/permissions/:id', async (req, res, next) => {
   }
 });
 
-securityRouter.get('/permissions/user/:id', cacheRequest({ noCache: true }), async (req, res, next) => {
-  try {
-    const userId = req.params.id;
+securityRouter.get(
+  '/permissions/user/:id',
+  cacheRequest({ noCache: true }),
+  async (req, res, next) => {
+    try {
+      const userId = req.params.id;
 
-    const permissions = await PermissionService.getUserPermissions(userId);
-    res.json(permissions);
-  } catch (err) {
-    next(err);
-  }
-});
+      const permissions = await PermissionService.getUserPermissions(userId);
+      res.json(permissions);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 /**
  * Get permissions of the user's in my organization
  */
-securityRouter.get('/permissions/organization', cacheRequest({ noCache: true }), async (req, res, next) => {
-  try {
-    const result = await PermissionService.getUserOrganizationMembersPermissions(req.user.id);
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+securityRouter.get(
+  '/permissions/organization',
+  cacheRequest({ noCache: true }),
+  async (req, res, next) => {
+    try {
+      const result = await PermissionService.getUserOrganizationMembersPermissions(req.user.id);
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 /**
  * Get permissions of all roles in the database
@@ -161,13 +175,17 @@ securityRouter.get('/permissions/role', cacheRequest({ noCache: true }), async (
 /**
  * Get all permission codes
  */
-securityRouter.get('/permissions/code', cacheRequest({ maxAge: 3600, mustRevalidate: true }), async (req, res, next) => {
-  try {
-    const result = await PermissionService.getPermissionCodes();
-    res.json(result);
-  } catch (err) {
-    next(err);
-  }
-});
+securityRouter.get(
+  '/permissions/code',
+  cacheRequest({ maxAge: 3600, mustRevalidate: true }),
+  async (req, res, next) => {
+    try {
+      const result = await PermissionService.getPermissionCodes();
+      res.json(result);
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 module.exports = securityRouter;

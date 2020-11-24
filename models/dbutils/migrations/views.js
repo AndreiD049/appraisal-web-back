@@ -2,8 +2,9 @@ const mongoose = require('mongoose');
 
 async function createViews() {
   try {
-    const collections = await (await
-    mongoose.connection.db.listCollections().toArray()).map((c) => c.name);
+    const collections = await (await mongoose.connection.db.listCollections().toArray()).map(
+      (c) => c.name,
+    );
     // Appraisal Items
     if (collections.indexOf('AppraisalItemsView') === -1) {
       mongoose.connection.db.createCollection('AppraisalItemsView', {

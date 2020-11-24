@@ -9,7 +9,7 @@ const UserService = require('../UserService');
 
 const userExists = (user) => async () => ({
   result: Boolean(user),
-  message: 'User doesn\'t exist.',
+  message: "User doesn't exist.",
 });
 
 const userAuthorized = (user, code, grant) => async () => ({

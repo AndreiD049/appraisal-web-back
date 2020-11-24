@@ -3,15 +3,18 @@ const UserService = require('../UserService');
 
 const validations = {
   validateDelete(audit) {
-    if (audit.actionPoints.length) { throw new Error('Audit cannot be deleted. Action points present.'); }
-    if (audit.status !== 'New') throw new Error('Audit cannot be deleted. Status is not \'New\'');
+    if (audit.actionPoints.length) {
+      throw new Error('Audit cannot be deleted. Action points present.');
+    }
+    if (audit.status !== 'New') throw new Error("Audit cannot be deleted. Status is not 'New'");
   },
 };
 
 const AuditService = {
-  populate: (doc) => doc
-    .populate({ path: 'auditor', select: 'username' })
-    .populate({ path: 'organization', select: 'name' }),
+  populate: (doc) =>
+    doc
+      .populate({ path: 'auditor', select: 'username' })
+      .populate({ path: 'organization', select: 'name' }),
 
   /**
    * Get current user's audits.
@@ -19,39 +22,35 @@ const AuditService = {
    */
   async getAudits(user) {
     const userDb = await UserService.getUser(user.id);
-    const audits = await this.populate(AuditModel.find({
-      organization: userDb.organization.id,
-    }).select([
-      '-createdUser',
-      '-createdDate',
-      '-modifiedUser',
-      '-modifiedDate',
-    ]));
+    const audits = await this.populate(
+      AuditModel.find({
+        organization: userDb.organization.id,
+      }).select(['-createdUser', '-createdDate', '-modifiedUser', '-modifiedDate']),
+    );
     return audits;
   },
 
   async updateAudit(auditId, audit) {
-    const updated = AuditModel
-      .findByIdAndUpdate(auditId, audit, { new: true, runValidators: true });
-    return this.populate(updated)
-      .select([
-        '-createdUser',
-        '-createdDate',
-        '-modifiedUser',
-        '-modifiedDate',
-      ]);
+    const updated = AuditModel.findByIdAndUpdate(auditId, audit, {
+      new: true,
+      runValidators: true,
+    });
+    return this.populate(updated).select([
+      '-createdUser',
+      '-createdDate',
+      '-modifiedUser',
+      '-modifiedDate',
+    ]);
   },
 
   async addAudit(audit) {
-    const created = this.populate(await (new AuditModel(audit)).save());
-    const result = await AuditModel
-      .findById(created.id)
-      .select([
-        '-createdUser',
-        '-createdDate',
-        '-modifiedUser',
-        '-modifiedDate',
-      ]);
+    const created = this.populate(await new AuditModel(audit).save());
+    const result = await AuditModel.findById(created.id).select([
+      '-createdUser',
+      '-createdDate',
+      '-modifiedUser',
+      '-modifiedDate',
+    ]);
     return result;
   },
 
@@ -64,7 +63,6 @@ const AuditService = {
     }
     return null;
   },
-
 };
 
 module.exports = AuditService;

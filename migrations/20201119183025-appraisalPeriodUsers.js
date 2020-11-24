@@ -11,13 +11,16 @@ module.exports = {
     const periods = await db.collection('appraisalperiods').find({}).toArray();
     periods.forEach((p) => {
       const users = p.users.map((u) => ({ _id: u, locked: false }));
-      db.collection('appraisalperiods').updateOne({
-        _id: p._id,
-      }, {
-        $set: {
-          users,
+      db.collection('appraisalperiods').updateOne(
+        {
+          _id: p._id,
         },
-      });
+        {
+          $set: {
+            users,
+          },
+        },
+      );
     });
   },
 
@@ -27,13 +30,16 @@ module.exports = {
     const periods = await db.collection('appraisalperiods').find({}).toArray();
     periods.forEach((p) => {
       const users = p.users.map((u) => u._id);
-      db.collection('appraisalperiods').updateOne({
-        _id: p._id,
-      }, {
-        $set: {
-          users,
+      db.collection('appraisalperiods').updateOne(
+        {
+          _id: p._id,
         },
-      });
+        {
+          $set: {
+            users,
+          },
+        },
+      );
     });
   },
 };

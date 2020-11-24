@@ -1,6 +1,8 @@
-const cacheRequest = ({
-  publicCache, privateCache, maxAge, mustRevalidate, noCache,
-}) => (req, res, next) => {
+const cacheRequest = ({ publicCache, privateCache, maxAge, mustRevalidate, noCache }) => (
+  req,
+  res,
+  next,
+) => {
   let result = '';
   try {
     if (publicCache) {

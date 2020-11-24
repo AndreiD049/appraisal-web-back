@@ -42,9 +42,13 @@ const RoleService = {
     return result;
   },
   async updateRoleByName(name, role) {
-    const result = await RoleModel.findOneAndUpdate({
-      name,
-    }, role, { new: true });
+    const result = await RoleModel.findOneAndUpdate(
+      {
+        name,
+      },
+      role,
+      { new: true },
+    );
     return result;
   },
 };

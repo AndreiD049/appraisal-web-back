@@ -1,6 +1,9 @@
 # mongo-migrations
 migrate-mongo-config.js
 
+#prettier
+.prettierignore
+
 # Logs
 logs
 *.log

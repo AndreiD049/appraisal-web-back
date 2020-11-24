@@ -25,7 +25,8 @@ const constants = {
     },
     APPRAISAL_DETAILS_OTHER: {
       code: 'APPRAISAL DETAILS - OTHER USERS',
-      description: 'Access to see, add, edit, delete Appraisal details for other users within the team',
+      description:
+        'Access to see, add, edit, delete Appraisal details for other users within the team',
       grants: {
         read: 'read',
         create: 'create',
@@ -50,7 +51,8 @@ const constants = {
     },
     SETTINGS: {
       code: 'SETTINGS',
-      description: 'Access to various settings. Be careful about following: users - will allow users to modify other users; permissions - will allow users to alter permissions',
+      description:
+        'Access to various settings. Be careful about following: users - will allow users to modify other users; permissions - will allow users to alter permissions',
       grants: {
         read: 'read',
         general: 'general',

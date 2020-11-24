@@ -18,8 +18,11 @@ const AuthorizationService = {
         }
       }
       if (role) {
-        const rolePermissions = await PermissionService
-          .getRolePermissionsByCode(role.id, code, organization.id);
+        const rolePermissions = await PermissionService.getRolePermissionsByCode(
+          role.id,
+          code,
+          organization.id,
+        );
         if (rolePermissions.filter((r) => r.grants.indexOf(grant) !== -1).length > 0) {
           return true;
         }

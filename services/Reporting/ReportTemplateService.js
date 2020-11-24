@@ -33,9 +33,7 @@ const ReportTemplateService = {
 
   async processAggregationObjectIds(object) {
     if (object instanceof Array) {
-      return Promise.all(
-        object.map((o) => this.processAggregationObjectIds(o)),
-      );
+      return Promise.all(object.map((o) => this.processAggregationObjectIds(o)));
     }
     const result = { ...object };
     const keys = Object.keys(result);
@@ -55,12 +53,9 @@ const ReportTemplateService = {
   async processAggregation(aggregation, user) {
     const aggr = await this.processAggregationObjectIds(JSON.parse(aggregation));
     const data = {};
-    const validations = aggr.map((a) => perform(
-      and([
-        validate.viewExists(a.view),
-        validate.viewName(a.view),
-      ]),
-    ));
+    const validations = aggr.map((a) =>
+      perform(and([validate.viewExists(a.view), validate.viewName(a.view)])),
+    );
     await Promise.all(validations);
     const aggregationResult = aggr.map(async (block) => {
       data[block.name] = await model(block.view).aggregate(block.aggregation);
@@ -78,10 +73,9 @@ const ReportTemplateService = {
       return data.toISOString();
     }
     if (Array.isArray(copy)) {
-      return Promise.all(
-        copy.map(async (d) => this.formatData(d)),
-      );
-    } if (copy && copy.constructor && copy.constructor.name === 'Object') {
+      return Promise.all(copy.map(async (d) => this.formatData(d)));
+    }
+    if (copy && copy.constructor && copy.constructor.name === 'Object') {
       const keys = Object.keys(copy);
       const calls = keys.map(async (key) => {
         copy[key] = await this.formatData(copy[key]);
