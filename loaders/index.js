@@ -12,4 +12,4 @@ const init = async ({ expressApp }) => {
   console.log('Error handlers set.');
 };
 
-module.exports = { init };
+module.exports = { init, expressLoader, errorHandler, mongooseLoader, passportLoader };

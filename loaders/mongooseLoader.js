@@ -17,7 +17,7 @@ const init = async () => {
     await createCodes();
     console.info('Permission codes created');
     console.info('Creating views...');
-    createViews();
+    await createViews();
   } catch (e) {
     console.error('Error connecting to mongodb', e);
   }

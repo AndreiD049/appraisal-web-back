@@ -1,12 +1,8 @@
-const express = require('express');
+const initApp = require('./app');
 const config = require('./config');
-const loaders = require('./loaders');
 
 async function startServer() {
-  const app = express();
-  app.set('trust proxy', true);
-
-  await loaders.init({ expressApp: app });
+  const app = await initApp();
 
   app.listen(config.port, (err) => {
     if (err) {

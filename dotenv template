@@ -1,5 +1,6 @@
 PORT=<Port>
 MONGODB_URI=<connection_string>
+MONGODB_URI_TEST=<connection_string>
 identityMetadata=https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration
 clientID=<client_id>
 responseType=id_token
