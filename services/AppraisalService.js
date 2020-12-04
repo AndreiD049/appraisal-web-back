@@ -60,8 +60,11 @@ const AppraisalService = {
     return newPeriod.save();
   },
 
-  async updatePeriod(periodId, period) {
-    const newPeriod = await AppraisalPeriodModel.findByIdAndUpdate(periodId, period, { new: true });
+  async updatePeriod(periodId, period, user) {
+    const newPeriod = await AppraisalPeriodModel.findByIdAndUpdate(periodId, {
+      ...period,
+      modifiedUser: user.id,
+    }, { new: true });
     return newPeriod;
   },
 
@@ -93,6 +96,7 @@ const AppraisalService = {
       periodId,
       {
         users: period.users.filter((up) => String(up._id) !== userId).concat(userPeriod),
+        modifiedUser: reqUser.id,
       },
       { new: true },
     );
@@ -152,7 +156,7 @@ const AppraisalService = {
     const items = await AppraisalItemModel.find({
       periodId,
       user: userId,
-    }).exec();
+    }).populate({ path: 'createdUser modifiedUser', select: 'username' });
 
     return items;
   },
@@ -179,6 +183,8 @@ const AppraisalService = {
     // Delete the id's
     delete copy._id;
     delete copy.id;
+    delete copy.modifiedUser;
+    copy.createdDate = new Date();
     const result = await copy.save({ session });
     return result;
   },
@@ -225,7 +231,7 @@ const AppraisalService = {
     }).save();
 
     if (period.status === 'Finished') return this.finishItem(document);
-    return document;
+    return AppraisalItemModel.populate(document, {path: 'createdUser', select: 'username'});
   },
 
   async addItem(item, user) {
@@ -330,7 +336,14 @@ const AppraisalService = {
       await this.unFinishItem(item);
       delete updateObject.status;
     }
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, updateObject, { new: true });
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, {
+      ...updateObject,
+      modifiedUser: userDb.id,
+      createdUser: item.user,
+    }, { new: true }).populate({
+      path: 'createdUser modifiedUser',
+      select: 'username'
+    });
     if (status === 'Finished') await this.finishItem(item);
     return updated;
   },
@@ -383,7 +396,13 @@ const AppraisalService = {
       await this.unFinishItem(item);
       delete updateObject.status;
     }
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, updateObject, { new: true });
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, {
+      ...updateObject,
+      modifiedUser: userFrom.id,
+    }, { new: true }).populate({
+      path: 'createdUser modifiedUser',
+      select: 'username',
+    });
     if (status === 'Finished') await this.finishItem(updated);
     return updated;
   },
