@@ -44,7 +44,7 @@ ReportTemplateSchema.set('toJSON', {
   transform: toJSON,
 });
 
-const ReportTemplateModel = mongoose.model('ReportTempalte', ReportTemplateSchema);
+const ReportTemplateModel = mongoose.model('ReportTemplate', ReportTemplateSchema);
 const ReportTemplatesView = mongoose.model(
   'ReportTemplatesView',
   ReportTemplateSchema,

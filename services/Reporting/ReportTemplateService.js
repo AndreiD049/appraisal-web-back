@@ -1,9 +1,32 @@
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
+const carbone = require('carbone');
 const { model, Types, isValidObjectId } = require('mongoose');
+const traverse = require('traverse');
 const { ReportTemplateModel } = require('../../models/Reporting');
 const UserService = require('../UserService');
 const { perform, validate, and } = require('../validators');
 
 const ReportTemplateService = {
+  /**
+   * Sample aggregation
+   [
+    {
+      "name": "test",
+      "view": "AppraisalItemsView",
+      "aggregation": [
+        {
+          "$match": {
+            "type": "Planned"
+          }
+        }
+      ]
+    }
+  ]
+   * @param {*} template 
+   * @param {*} user 
+   */
   async addTemplate(template, user) {
     const dbUser = await UserService.getUser(user.id);
     const dbTemplate = {
@@ -22,13 +45,67 @@ const ReportTemplateService = {
    * Get template by name.
    * Search the template in current user's organization/
    */
-  async getTemplate(name, user) {
+  async getTemplate(id, user) {
     const dbUser = await UserService.getUser(user.id);
     const template = await ReportTemplateModel.findOne({
-      name,
+      _id: id,
       organizationId: dbUser.organization.id,
     });
     return template;
+  },
+
+  /**
+   * @param {string} name
+   * @param {any} user
+   * Get template by name.
+   * Search the template in current user's organization/
+   * Because this is an overview, do not send the template
+   */
+  async getTemplates(user) {
+    const dbUser = await UserService.getUser(user.id);
+    const templates = await ReportTemplateModel.find({
+      organizationId: dbUser.organization.id,
+    }).select({
+      "template": 0,
+    });
+    return templates;
+  },
+
+  /**
+   * Parameters are returned in following format
+   * [
+   *  {
+   *    name: "string",
+   *    parameters: [
+   *      "path1",
+   *      "path2",
+   *      ...   
+   *    ]
+   *  },
+   *  ...
+   * ]
+   * @param {string} id 
+   * @param {any} user 
+   */
+  async getTempalteParameters(id, user) {
+    const validSteps = ['$match'];
+    const template = await this.getTemplate(id, user);
+    if (!template) return null;
+    const aggregation = JSON.parse(template.aggregation);
+    const result = [];
+    aggregation.forEach((a) => {
+      const block = {
+        name: a.name,
+        paths: null,
+      };
+
+      block.paths = traverse
+        .paths(a.aggregation)
+        .filter(s => s.length > 2 && validSteps.indexOf(s[1]) !== -1)
+        .map(p => p.join('.'));
+      result.push(block);
+    })
+    return result;
   },
 
   async processAggregationObjectIds(object) {
@@ -43,6 +120,7 @@ const ReportTemplateService = {
         result[key] = await this.processAggregationObjectIds(result[key]);
       }
       if (isValidObjectId(result[key])) {
+        console.log("key", key);
         result[key] = new Types.ObjectId(result[key]);
       }
     });
@@ -51,7 +129,11 @@ const ReportTemplateService = {
   },
 
   async processAggregation(aggregation, user) {
-    const aggr = await this.processAggregationObjectIds(JSON.parse(aggregation));
+    // const aggr = await this.processAggregationObjectIds(JSON.parse(aggregation.replace('$__REQUSER__$', user.id)));
+    const aggr = JSON.parse(
+      (await this.aggregationPreProcess(aggregation))
+        .replace('"$__REQUSER__$"', `{ "$toObjectId": "${user.id}"}`)
+    );
     const data = {};
     const validations = aggr.map((a) =>
       perform(and([validate.viewExists(a.view), validate.viewName(a.view)])),
@@ -104,6 +186,61 @@ const ReportTemplateService = {
       await Promise.all(calls);
     }
     return copy;
+  },
+
+  /**
+   * Generate the report and return the Blob
+   * @param {Object} data 
+   * @param {Object} user 
+   */
+  async render(data, report, user) {
+    const templateBuffer = (await ReportTemplateModel.findById(report.template.id, {
+      template: 1
+    })).template;
+    const finalPath = path.join(os.tmpdir(), user.id, 'templates', report.template.filename);
+    fs.mkdirSync(path.join(os.tmpdir(), user.id, 'templates'), { recursive: true });
+    fs.writeFileSync(finalPath, templateBuffer);
+    return new Promise((res, rej) => {
+      carbone.render(finalPath, data, (err, result) => {
+        if (err) return rej(err);
+        return res(result);
+      })
+    })
+  },
+
+  /**
+   * Modify the aggregation before applying it to the database
+   * @param {string} aggregation 
+   */
+  async aggregationPreProcess(aggregation) {
+    const aggregationJSON = JSON.parse(aggregation);
+    // Add a field for the requesting user
+    const fieldsStep = {
+      $addFields: {
+        "REQUSER": "$__REQUSER__$",
+      }
+    }
+    // populate REQUSER with user info
+    const lookupStep = {
+      $lookup: {
+        from: 'users',
+        localField: 'REQUSER',
+        foreignField: '_id',
+        as: 'REQUSER'
+      }
+    }
+    const firstElement = {
+      $addFields: {
+        "REQUSER": {
+          $first: "$REQUSER",
+        }
+      }
+    }
+    aggregationJSON.forEach(step => {
+      const s = step;
+      s.aggregation = [].concat(fieldsStep, lookupStep, firstElement, step.aggregation);
+    })
+    return JSON.stringify(aggregationJSON);
   },
 };
 

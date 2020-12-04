@@ -1,7 +1,7 @@
 /**
  * This file contains valious validation functions.
  * Function schema
- * @param {any} args - any arguments function might use
+ * @param {} args - any arguments function might use
  * @returns {async function(): {result: boolean, message: string}}
  */
 

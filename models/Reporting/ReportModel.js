@@ -12,7 +12,8 @@ const ParameterSchema = new mongoose.Schema({
   },
   defaultValue: {
     type: String,
-    required: true,
+    required: false,
+    default: '',
   },
 });
 
@@ -30,6 +31,16 @@ const ReportSchema = new mongoose.Schema(
     description: {
       type: String,
       required: false,
+    },
+    overruleTemplate: {
+      type: Buffer,
+      required: false,
+      default: null,
+    },
+    organizationId: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: 'Organization',
     },
     parameters: [
       {
@@ -51,10 +62,14 @@ ReportSchema.set('toJSON', {
   transform: toJSON,
 });
 
-const ReportModel = mongoose.model('Report', ReportSchema);
+ParameterSchema.set('toJSON', {
+  transform: toJSON,
+});
+
+const ReportsModel = mongoose.model('Report', ReportSchema);
 const ReportsView = mongoose.model('ReportsView', ReportSchema, 'ReportsView', true);
 
 module.exports = {
-  ReportModel,
+  ReportsModel,
   ReportsView,
 };

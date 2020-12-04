@@ -4,9 +4,10 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const carbone = require('carbone');
-const { ReportTemplateService } = require('../../services/Reporting');
+const { ReportTemplateService, ReportingService } = require('../../services/Reporting');
 const { AuthorizeReq } = require('../../services/AuthorizationService').AuthorizationService;
 const { securities } = require('../../config/constants');
+const { REPORT_TEMPLATES, REPORTS } = require('../../config/constants').securities;
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -17,13 +18,115 @@ reportingRouter.use(async (req, res, next) => {
   next();
 });
 
-reportingRouter.get('/', AuthorizeReq('REPORTS', 'read'), async (req, res, next) => {
+/**
+ * TODO: add validation for reports
+ */
+reportingRouter.get(
+  '/reports/:id',
+  AuthorizeReq('REPORTS', 'read'),
+  async (req, res, next) => {
   try {
-    //
+    const { id } = req.params;
+    const report = await ReportingService.getReport(req.user, id);
+    res.json(report);
   } catch (err) {
     next(err);
   }
 });
+
+/**
+ * TODO: add validation for reports
+ */
+reportingRouter.get(
+  '/reports',
+  AuthorizeReq('REPORTS', 'read'),
+  async (req, res, next) => {
+  try {
+    const reports = await ReportingService.getReports(req.user);
+    res.json(reports);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Create a new report
+ */
+reportingRouter.post(
+  '/reports',
+  AuthorizeReq(REPORTS.code, REPORTS.grants.create),
+  upload.any(),
+  async (req, res, next) => {
+    try {
+      const { body } = req;
+      body.parameters = JSON.parse(body.parameters);
+      const report = await ReportingService.addReport(req.user, body);
+      res.json(report);
+    } catch (err) {
+      next(err);
+    }
+  }
+)
+
+reportingRouter.post(
+  '/reports/:id/generate',
+  AuthorizeReq(REPORTS.code, REPORTS.grants.read),
+  async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const params = req.body;
+    const report = await ReportingService.generateReport(req.user, id, params);
+    res.end(report);
+  } catch (err) {
+    next(err);
+  }
+});
+
+reportingRouter.get(
+  '/templates/:id',
+  AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.read),
+  async (req, res, next) => {
+    try {
+      const {id} = req.params;
+      const template = await ReportTemplateService.getTemplate(id, req.user);
+      res.json(template);
+    } catch (err) {
+      next(err);
+    }
+  }
+)
+
+reportingRouter.get(
+  '/templates',
+  AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.read),
+  async (req, res, next) => {
+    try {
+      const templates = await ReportTemplateService.getTemplates(req.user);
+      res.json(templates);
+    } catch (err) {
+      next(err);
+    }
+  }
+)
+
+/** 
+ * Get template parameters.
+ * Template parameters are paths to aggregation $match stages
+ * When creating the report, user will select the parameters that can be modified.
+ */
+reportingRouter.get(
+  '/templates/:id/parameters',
+  AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.read),
+  async (req, res, next) => {
+    try {
+      const {id} = req.params;
+      const params = await ReportTemplateService.getTempalteParameters(id, req.user);
+      res.json(params);
+    } catch (err) {
+      next(err);
+    }
+  }
+)
 
 /**
  * Create the report file in the temporary directory
@@ -31,8 +134,8 @@ reportingRouter.get('/', AuthorizeReq('REPORTS', 'read'), async (req, res, next)
  * Used only as samples
  */
 reportingRouter.post(
-  '/template/generate',
-  AuthorizeReq('REPORT-TEMPLATES', 'create'),
+  '/templates/generate',
+  AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.create),
   upload.single('template'),
   async (req, res, next) => {
     try {
@@ -44,17 +147,7 @@ reportingRouter.post(
       const data = await ReportTemplateService.processAggregation(aggregation, req.user);
       carbone.render(finalPath, data, { hardRefresh: true }, (err, result) => {
         if (err) return next(err);
-        const filePathResult = path.join(
-          os.tmpdir(),
-          req.user.id,
-          'results',
-          req.file.originalname,
-        );
-        fs.mkdirSync(path.join(os.tmpdir(), req.user.id, 'results'), { recursive: true });
-        fs.writeFileSync(filePathResult, result);
-        return res.json({
-          filepath: filePathResult,
-        });
+        return res.end(result);
       });
     } catch (err) {
       next(err);
@@ -66,38 +159,21 @@ reportingRouter.post(
  * Retrieve sample data
  */
 reportingRouter.post(
-  '/template/sample',
+  '/templates/sample',
   AuthorizeReq(securities.REPORT_TEMPLATES.code, securities.REPORT_TEMPLATES.grants.create),
   async (req, res, next) => {
     try {
       const { aggregation } = req.body;
       const data = await ReportTemplateService.sampleData(
         await ReportTemplateService.formatData(
-          await ReportTemplateService.processAggregation(aggregation, req.user),
+          await ReportTemplateService.processAggregation(
+            aggregation, 
+            req.user),
         ),
       );
       res.json(data);
     } catch (err) {
       next(err);
-    }
-  },
-);
-
-/**
- * Download the sample report generated from tempalte
- */
-reportingRouter.get(
-  '/template/generate',
-  AuthorizeReq(securities.REPORT_TEMPLATES.code, securities.REPORT_TEMPLATES.grants.create),
-  async (req, res, next) => {
-    try {
-      const { filepath } = req.query;
-      if (!filepath) {
-        return res.status(204).end();
-      }
-      return res.download(filepath);
-    } catch (err) {
-      return next(err);
     }
   },
 );
