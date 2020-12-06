@@ -21,6 +21,7 @@ const ReportTemplateSchema = new mongoose.Schema(
     organizationId: {
       type: mongoose.Types.ObjectId,
       required: true,
+      ref: 'Organization',
     },
     createdUser: {
       type: mongoose.Types.ObjectId,

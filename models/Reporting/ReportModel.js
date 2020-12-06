@@ -49,6 +49,15 @@ const ReportSchema = new mongoose.Schema(
         default: [],
       },
     ],
+    createdUser: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: 'User',
+    },
+    modifiedUser: {
+      type: mongoose.Types.ObjectId,
+      ref: 'User',
+    },
   },
   {
     timestamps: {

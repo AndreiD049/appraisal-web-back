@@ -2,13 +2,53 @@ const os = require('os');
 const path = require('path');
 const fs = require('fs');
 const carbone = require('carbone');
-const { model, Types, isValidObjectId } = require('mongoose');
+const { model } = require('mongoose');
 const traverse = require('traverse');
 const { ReportTemplateModel } = require('../../models/Reporting');
 const UserService = require('../UserService');
 const { perform, validate, and } = require('../validators');
+const { REPORT_TEMPLATES } = require('../../config/constants').securities;
 
 const ReportTemplateService = {
+
+  /**
+   * @param {string} name
+   * @param {any} user
+   * Get template by name.
+   * Search the template in current user's organization/
+   */
+  async getTemplate(id, user) {
+    const dbUser = await UserService.getUser(user.id);
+    const template = await ReportTemplateModel.findOne({
+      _id: id,
+      organizationId: dbUser.organization.id,
+    }).populate([
+      { path: 'createdUser modifiedUser', select: 'username' },
+      { path: 'organizationId', select: 'name' },
+    ]);
+    return template;
+  },
+
+  /**
+   * @param {string} name
+   * @param {any} user
+   * Get template by name.
+   * Search the template in current user's organization/
+   * Because this is an overview, do not send the template
+   */
+  async getTemplates(user) {
+    const dbUser = await UserService.getUser(user.id);
+    const templates = await ReportTemplateModel.find({
+      organizationId: dbUser.organization.id,
+    }).populate([{
+      path: 'createdUser',
+      select: 'username',
+    }]).select({
+      "template": 0,
+    });
+    return templates;
+  },
+
   /**
    * Sample aggregation
    [
@@ -33,42 +73,37 @@ const ReportTemplateService = {
       ...template,
       organizationId: dbUser.organization.id,
       createdUser: dbUser.id,
-      createdDate: new Date(),
     };
     const result = await ReportTemplateModel.create(dbTemplate);
     return result;
   },
 
   /**
-   * @param {string} name
-   * @param {any} user
-   * Get template by name.
-   * Search the template in current user's organization/
+   * @param {*} id template id
+   * @param {*} template updated template
+   * @param {*} user requesting user
    */
-  async getTemplate(id, user) {
-    const dbUser = await UserService.getUser(user.id);
-    const template = await ReportTemplateModel.findOne({
-      _id: id,
-      organizationId: dbUser.organization.id,
-    });
-    return template;
+  async updateTemplate(id, template, user) {
+    const validations = and([
+      validate.userAuthorized(user, REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.update),
+    ]);
+    await perform(validations);
+    const result = await ReportTemplateModel.findByIdAndUpdate(id, {
+      ...template,
+      modifiedUser: user.id,
+    }, { new: true }).populate([
+      { path: 'createdUser modifiedUser', select: 'username' },
+      { path: 'organizationId', select: 'name' },
+    ]);
+    return result;
   },
 
-  /**
-   * @param {string} name
-   * @param {any} user
-   * Get template by name.
-   * Search the template in current user's organization/
-   * Because this is an overview, do not send the template
-   */
-  async getTemplates(user) {
-    const dbUser = await UserService.getUser(user.id);
-    const templates = await ReportTemplateModel.find({
-      organizationId: dbUser.organization.id,
-    }).select({
-      "template": 0,
-    });
-    return templates;
+  async deleteTemplate(id, user) {
+    const validations = and([
+      validate.userAuthorized(user, REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.delete),
+    ]);
+    await perform(validations);
+    return ReportTemplateModel.findOneAndDelete(id);
   },
 
   /**
@@ -108,28 +143,8 @@ const ReportTemplateService = {
     return result;
   },
 
-  async processAggregationObjectIds(object) {
-    if (object instanceof Array) {
-      return Promise.all(object.map((o) => this.processAggregationObjectIds(o)));
-    }
-    const result = { ...object };
-    const keys = Object.keys(result);
-    // loop each key and recurse if value is an object
-    const calls = keys.map(async (key) => {
-      if (result[key] instanceof Object) {
-        result[key] = await this.processAggregationObjectIds(result[key]);
-      }
-      if (isValidObjectId(result[key])) {
-        console.log("key", key);
-        result[key] = new Types.ObjectId(result[key]);
-      }
-    });
-    await Promise.all(calls);
-    return result;
-  },
-
   async processAggregation(aggregation, user) {
-    // const aggr = await this.processAggregationObjectIds(JSON.parse(aggregation.replace('$__REQUSER__$', user.id)));
+    await validate.isAggregationValid(aggregation)();
     const aggr = JSON.parse(
       (await this.aggregationPreProcess(aggregation))
         .replace('"$__REQUSER__$"', `{ "$toObjectId": "${user.id}"}`)
@@ -146,46 +161,20 @@ const ReportTemplateService = {
     return data;
   },
 
-  async formatData(data) {
-    const copy = data;
-    if (copy instanceof Types.ObjectId) {
-      return data.toString();
-    }
-    if (copy instanceof Date) {
-      return data.toISOString();
-    }
-    if (Array.isArray(copy)) {
-      return Promise.all(copy.map(async (d) => this.formatData(d)));
-    }
-    if (copy && copy.constructor && copy.constructor.name === 'Object') {
-      const keys = Object.keys(copy);
-      const calls = keys.map(async (key) => {
-        copy[key] = await this.formatData(copy[key]);
-      });
-      await Promise.all(calls);
-    }
-    return copy;
-  },
   /**
-   * @param {any} data
-   * Given a collection of items, will recursively slice the data
-   * to contain maximum 2 items per collection
+   * Insert a limit step in the aggregation
+   * @param {String} aggregation 
+   * @param {Number} limit 
    */
-  async sampleData(data) {
-    let copy = data;
-    // if data is an object
-    // loop through properties and apply function recursively
-    if (Array.isArray(data)) {
-      copy = await Promise.all(data.slice(0, 2).map(async (d) => this.sampleData(d)));
-    } else if (data && data.constructor && data.constructor.name === 'Object') {
-      copy = { ...data };
-      const keys = Object.keys(copy);
-      const calls = keys.map(async (key) => {
-        copy[key] = await this.sampleData(copy[key]);
+  async sampleAggregtion(aggregation, limit) {
+    await perform(validate.isAggregationValid(aggregation));
+    const aggregationJSON = JSON.parse(aggregation);
+    aggregationJSON.forEach((a, idx) => {
+      aggregationJSON[idx].aggregation = a.aggregation.concat({
+        $limit: limit
       });
-      await Promise.all(calls);
-    }
-    return copy;
+    });
+    return JSON.stringify(aggregationJSON);
   },
 
   /**
@@ -200,6 +189,27 @@ const ReportTemplateService = {
     const finalPath = path.join(os.tmpdir(), user.id, 'templates', report.template.filename);
     fs.mkdirSync(path.join(os.tmpdir(), user.id, 'templates'), { recursive: true });
     fs.writeFileSync(finalPath, templateBuffer);
+    return new Promise((res, rej) => {
+      carbone.render(finalPath, data, (err, result) => {
+        if (err) return rej(err);
+        return res(result);
+      })
+    })
+  },
+
+  /**
+   * Generate a report from buffer template
+   * @param {any} data 
+   * @param {Buffer} buffer 
+   * @param {any} user 
+   */
+  async renderFromBuf(data, buffer, user, filename = 'buffer-template') {
+    const finalPathFolder = path.join(os.tmpdir(), user.id, 'templates');
+    // Only create folder if doesn't already exist
+    if (!fs.existsSync(finalPathFolder))
+      fs.mkdirSync(finalPathFolder);
+    const finalPath = path.join(finalPathFolder, filename);
+    fs.writeFileSync(finalPath, buffer);
     return new Promise((res, rej) => {
       carbone.render(finalPath, data, (err, result) => {
         if (err) return rej(err);

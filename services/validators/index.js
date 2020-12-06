@@ -2,6 +2,7 @@ const appraisalValidators = require('./AppraisalValidators');
 const userValidators = require('./UserValidators');
 const mongoValidators = require('./mongoValidators');
 const GeneralValidators = require('./GeneralValidators');
+const ReportingValidators = require('./ReportingValidators');
 
 /**
  * @param {Array.<function(): {result: boolean, message: string}>} validations
@@ -172,5 +173,6 @@ module.exports = {
     ...userValidators,
     ...mongoValidators,
     ...GeneralValidators,
+    ...ReportingValidators,
   },
 };

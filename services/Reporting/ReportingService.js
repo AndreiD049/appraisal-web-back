@@ -11,15 +11,24 @@ const ReportTemplateService = require('./ReportTemplateService');
 const { ReportsModel } = require('../../models/Reporting');
 const UserService = require('../UserService');
 const { validate, perform, and } = require('../validators');
+const { REPORTS } = require('../../config/constants').securities;
 
 const ReportingService = {
   async getReports(user) {
     const userDb = await UserService.getUser(user.id);
     const reports = await ReportsModel.find({
       organizationId: userDb.organization,
-    }).select({
+    }).populate([
+      { path: 'createdUser', select: 'username' },
+      { path: 'organizationId', select: 'name' }
+    ]).select({
       id: 1,
       name: 1,
+      description: 1,
+      createdUser: 1,
+      createdDate: 1,
+      organizationId: 1,
+      parameters: 1,
     });
     return reports;
   },
@@ -42,7 +51,37 @@ const ReportingService = {
     const userDb = await UserService.getUser(user.id);
     const newReport = new ReportsModel(report);
     newReport.organizationId = userDb.organization;
+    newReport.createdUser = user.id;
     return newReport.save();
+  },
+
+  /**
+   * @param {string} id 
+   * @param {any} report Report updated body
+   * @param {any} user 
+   */
+  async updateReport(id, report, user) {
+    await perform(validate.userAuthorized(user, REPORTS.code, REPORTS.grants.update));
+    const result = await ReportsModel.findByIdAndUpdate(id, {
+      ...report,
+      modifiedUser: user.id,
+    }, { new: true }).populate({
+      path: 'template',
+      select: {
+        template: 0,
+      }
+    });
+    return result;
+  },
+
+  /**
+   * Delete a report
+   * @param {*} id 
+   * @param {*} user 
+   */
+  async deleteReport(id, user) {
+    await perform(validate.userAuthorized(user, REPORTS.code, REPORTS.grants.delete));
+    return ReportsModel.findOneAndDelete(id);
   },
 
   /**
@@ -114,18 +153,31 @@ const ReportingService = {
       validate.isTruthy(Number.isInteger(+index), `Path index is not valid - ${param.path}`),
     ]));
     const block = aggregation[blockIndex];
-    const aggregationBlock = block.aggregation;
+    const blockAggregation = block.aggregation;
     await perform(and([
-      validate.isTruthy(aggregationBlock.length, 'Aggregation should be an array'),
-      validate.isTruthy((aggregationBlock.length - 1) >= +index , 'Aggregation index out of bounds'),
+      validate.isTruthy(blockAggregation.length, 'Aggregation should be an array'),
+      validate.isTruthy((blockAggregation.length - 1) >= +index , 'Aggregation index out of bounds'),
     ]));
     // concrete pipeline stage
-    const step = aggregationBlock[+index];
+    const step = blockAggregation[+index];
     if (!traverse.has(step, keys)) {
       throw new Error(`Path is invalid - ${keys.join('.')}`);
     }
-    traverse.set(step, keys, param.value);
-  }
+    const value = await this.getParamValue(param);
+    traverse.set(step, keys, value);
+  },
+
+  /**
+   * Returns either a string or an object if the param is an object
+   * @param {{name: String, path: String, value: String}} param - params inserted by user
+   */
+  async getParamValue(param) {
+    try {
+      return JSON.parse(param.value);
+    } catch (err) {
+      return param.value;
+    }
+  },
 
 };
 
