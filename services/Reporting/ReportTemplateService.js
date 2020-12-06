@@ -207,7 +207,7 @@ const ReportTemplateService = {
     const finalPathFolder = path.join(os.tmpdir(), user.id, 'templates');
     // Only create folder if doesn't already exist
     if (!fs.existsSync(finalPathFolder))
-      fs.mkdirSync(finalPathFolder);
+      fs.mkdirSync(finalPathFolder, { recursive: true });
     const finalPath = path.join(finalPathFolder, filename);
     fs.writeFileSync(finalPath, buffer);
     return new Promise((res, rej) => {
