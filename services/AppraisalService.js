@@ -388,6 +388,7 @@ const AppraisalService = {
 
     const { status } = item;
     const updateObject = update;
+    delete updateObject.createdUser;
     if (status === 'Finished') {
       // if current item's status is finished, we will first unfinish it
       // This is done to remove all related entries first
