@@ -403,6 +403,9 @@ const AppraisalService = {
     }, { new: true }).populate({
       path: 'createdUser modifiedUser',
       select: 'username',
+    }).populate({
+      path: 'createdUser modifiedUser',
+      select: 'username'
     });
     if (status === 'Finished') await this.finishItem(updated);
     return updated;
