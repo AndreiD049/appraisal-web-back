@@ -1,12 +1,13 @@
-const initApp = require('./app');
+const app = require('./app');
 const config = require('./config');
+const mongooseLoader = require('./loaders/mongooseLoader');
 
 async function startServer() {
-  const app = await initApp();
+  await mongooseLoader.init();
 
   app.listen(config.port, (err) => {
     if (err) {
-      console.log(err);
+      console.error(err);
       return;
     }
     console.log(`

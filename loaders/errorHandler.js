@@ -9,7 +9,7 @@ const errorHandler = (error, req, res, next) => {
   return next();
 };
 
-const init = async ({ app }) => {
+const init = ({ app }) => {
   app.use(errorHandler);
 
   return app;

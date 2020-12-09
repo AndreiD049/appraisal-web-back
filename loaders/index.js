@@ -3,13 +3,10 @@ const errorHandler = require('./errorHandler');
 const mongooseLoader = require('./mongooseLoader');
 const passportLoader = require('./passportLoader');
 
-const init = async ({ expressApp }) => {
-  await mongooseLoader.init();
-  await passportLoader.init({ app: expressApp });
-  await expressLoader.init({ app: expressApp });
-  console.log('Express initialized');
-  await errorHandler.init({ app: expressApp });
-  console.log('Error handlers set.');
+const init = ({ expressApp }) => {
+  passportLoader.init({ app: expressApp });
+  expressLoader.init({ app: expressApp });
+  errorHandler.init({ app: expressApp });
 };
 
 module.exports = { init, expressLoader, errorHandler, mongooseLoader, passportLoader };

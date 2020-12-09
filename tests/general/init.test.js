@@ -1,36 +1,26 @@
 /* eslint-disable no-undef */
-const request = require('supertest');
 const mongoose = require('mongoose');
-const initApp = require('../../app');
-const { create } = require('../data');
-
-let app;
 
 describe('test', () => {
   beforeAll(async () => {
-    app = await initApp();
-    await create();
+    await mongoose.connect(global.process.env.MONGO_URL, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      useCreateIndex: true,
+      useFindAndModify: false,
     });
+  });
 
   afterAll(async () => {
     // close the database;
-    // await mongoose.connection.dropDatabase();
     await mongoose.disconnect();
   });
 
   describe('Sample test', () => {
-    it('should test that true === true', () => {
-      console.log(global.app);
+    it('should test that true === true', async () => {
+      // wait 3 seconds by default
+      // await new Promise(res => setTimeout(res, 1000));
       expect(true).toBe(true);
     })
   });
-
-  // describe('Basic request', () => {
-  //   it('should be fine', async (done) => {
-  //     const res = await request(app).get('/api/periods');
-
-  //     expect(res.statusCode).toBe(400);
-  //     done();
-  //   })
-  // })
 });

@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const config = require('../config');
 const UserService = require('../services/UserService');
 
-const init = async ({ app }) => {
+const init = ({ app }) => {
   app.store = new MongoStore({
     mongooseConnection: mongoose.connection,
     ttl: 5 * 24 * 60 * 60,
@@ -55,7 +55,6 @@ const init = async ({ app }) => {
         issuer: config.creds.issuer,
         scope: ['profile'],
         useCookieInsteadOfSession: false,
-        loggingLevel: 'debug',
         nonceLifetime: null,
         nonceMaxAmount: 5,
         clockSkew: null,

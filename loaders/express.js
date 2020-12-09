@@ -11,7 +11,7 @@ const settingsRouter = require('../api/routes/settings');
 const reportingRouter = require('../api/routes/reporting');
 const { auditsRouter } = require('../api/routes/audits');
 
-const init = async ({ app }) => {
+const init = ({ app }) => {
   app.use(morgan('tiny'));
 
   app.get('/status', (req, res) => {

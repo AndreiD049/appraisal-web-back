@@ -5,6 +5,7 @@ const { UserModel } = require('../models/UserModel');
 const { and, or, not, validate, perform } = require('./validators');
 const { securities } = require('../config/constants');
 
+const AP = securities.APPRAISAL_PERIODS;
 const AD = securities.APPRAISAL_DETAILS;
 const ADO = securities.APPRAISAL_DETAILS_OTHER;
 
@@ -22,7 +23,7 @@ const AppraisalService = {
         { 'users._id': dbUser.id, status: 'Finished' },
         { status: 'Active', organizationId: dbUser.organization },
       ])
-      .populate({ path: 'createdUser', select: 'username' });
+      .populate({ path: 'createdUser modifiedUser', select: 'username' });
     return docs;
   },
 
@@ -51,11 +52,14 @@ const AppraisalService = {
   },
 
   async getPeriodById(id) {
-    const period = await AppraisalPeriodModel.findById(id).exec();
+    const period = await AppraisalPeriodModel.findById(id)
+      .populate({ path: 'createdUser modifiedUser', select: 'username' });
     return period;
   },
 
   async createPeriod(user, period) {
+    const validations = validate.userAuthorized(user, AP.code, AP.grants.create);
+    await perform(validations);
     const newPeriod = new AppraisalPeriodModel({ ...period });
     return newPeriod.save();
   },
