@@ -52,8 +52,10 @@ const AppraisalService = {
   },
 
   async getPeriodById(id) {
-    const period = await AppraisalPeriodModel.findById(id)
-      .populate({ path: 'createdUser modifiedUser', select: 'username' });
+    const period = await AppraisalPeriodModel.findById(id).populate({
+      path: 'createdUser modifiedUser',
+      select: 'username',
+    });
     return period;
   },
 
@@ -65,10 +67,25 @@ const AppraisalService = {
   },
 
   async updatePeriod(periodId, period, user) {
-    const newPeriod = await AppraisalPeriodModel.findByIdAndUpdate(periodId, {
-      ...period,
-      modifiedUser: user.id,
-    }, { new: true });
+    // validate first
+    const validations = validate.userAuthorized(user, AP.code, AP.grants.update);
+    await perform(validations);
+
+    const updated = period;
+    // Delete fields that are not update-able
+    delete updated.createdUser;
+    delete updated.modifiedUser;
+    const newPeriod = await AppraisalPeriodModel.findByIdAndUpdate(
+      periodId,
+      {
+        ...period,
+        modifiedUser: user.id,
+      },
+      { new: true, runValidators: true },
+    ).populate({
+      path: 'createdUser modifiedUser',
+      select: 'username',
+    });
     return newPeriod;
   },
 
@@ -87,7 +104,7 @@ const AppraisalService = {
       validate.userAuthorized(reqUserDb, ADO.code, ADO.grants.toggleLock),
     ]);
 
-    await validations();
+    await perform(validations);
 
     let userPeriod = period.users.find((u) => String(u._id) === String(userId));
     // If period doesn't exist, add it
@@ -107,8 +124,12 @@ const AppraisalService = {
   },
 
   async addUserToPeriod(periodId, user) {
-    const userId = user?.id || user?._id;
+    const userId = user?.id;
     if (userId) {
+      // Check if user authorized
+      const validations = validate.userAuthorized(user, AP.code, AP.grants.update);
+      await perform(validations);
+
       const newUser = new UserPeriodModel({
         _id: userId,
         locked: false,
@@ -139,7 +160,7 @@ const AppraisalService = {
       not(or([validate.periodStatus(period, 'Finished'), validate.periodLocked(period, userId)])),
       false,
     );
-    // await not(validate.periodStatus(period, 'Finished'))();
+
     if (validations.result) {
       const orphans = await AppraisalItemModel.find({
         user: userId,
@@ -235,7 +256,7 @@ const AppraisalService = {
     }).save();
 
     if (period.status === 'Finished') return this.finishItem(document);
-    return AppraisalItemModel.populate(document, {path: 'createdUser', select: 'username'});
+    return AppraisalItemModel.populate(document, { path: 'createdUser', select: 'username' });
   },
 
   async addItem(item, user) {
@@ -340,13 +361,17 @@ const AppraisalService = {
       await this.unFinishItem(item);
       delete updateObject.status;
     }
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, {
-      ...updateObject,
-      modifiedUser: userDb.id,
-      createdUser: item.user,
-    }, { new: true }).populate({
+    const updated = await AppraisalItemModel.findByIdAndUpdate(
+      itemId,
+      {
+        ...updateObject,
+        modifiedUser: userDb.id,
+        createdUser: item.user,
+      },
+      { new: true },
+    ).populate({
       path: 'createdUser modifiedUser',
-      select: 'username'
+      select: 'username',
     });
     if (status === 'Finished') await this.finishItem(item);
     return updated;
@@ -401,16 +426,22 @@ const AppraisalService = {
       await this.unFinishItem(item);
       delete updateObject.status;
     }
-    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, {
-      ...updateObject,
-      modifiedUser: userFrom.id,
-    }, { new: true }).populate({
-      path: 'createdUser modifiedUser',
-      select: 'username',
-    }).populate({
-      path: 'createdUser modifiedUser',
-      select: 'username'
-    });
+    const updated = await AppraisalItemModel.findByIdAndUpdate(
+      itemId,
+      {
+        ...updateObject,
+        modifiedUser: userFrom.id,
+      },
+      { new: true },
+    )
+      .populate({
+        path: 'createdUser modifiedUser',
+        select: 'username',
+      })
+      .populate({
+        path: 'createdUser modifiedUser',
+        select: 'username',
+      });
     if (status === 'Finished') await this.finishItem(updated);
     return updated;
   },

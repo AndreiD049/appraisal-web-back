@@ -10,17 +10,14 @@ const upload = multer({ storage });
 /**
  * TODO: add validation for reports
  */
-reportsRouter.get(
-  '/',
-  AuthorizeReq(REPORTS.code, REPORTS.grants.read),
-  async (req, res, next) => {
-    try {
-      const reports = await ReportingService.getReports(req.user);
-      res.json(reports);
-    } catch (err) {
-      next(err);
-    }
-  });
+reportsRouter.get('/', AuthorizeReq(REPORTS.code, REPORTS.grants.read), async (req, res, next) => {
+  try {
+    const reports = await ReportingService.getReports(req.user);
+    res.json(reports);
+  } catch (err) {
+    next(err);
+  }
+});
 
 /**
  * TODO: add validation for reports
@@ -36,7 +33,8 @@ reportsRouter.get(
     } catch (err) {
       next(err);
     }
-  });
+  },
+);
 
 /**
  * Create a new report
@@ -54,8 +52,8 @@ reportsRouter.post(
     } catch (err) {
       next(err);
     }
-  }
-)
+  },
+);
 
 /**
  * Generate the report
@@ -73,7 +71,8 @@ reportsRouter.post(
     } catch (err) {
       next(err);
     }
-  });
+  },
+);
 
 reportsRouter.put(
   '/:id',
@@ -86,7 +85,8 @@ reportsRouter.put(
     } catch (err) {
       next(err);
     }
-  }); 
+  },
+);
 
 reportsRouter.delete(
   '/:id',
@@ -99,6 +99,7 @@ reportsRouter.delete(
     } catch (err) {
       next(err);
     }
-  }); 
+  },
+);
 
 module.exports = reportsRouter;

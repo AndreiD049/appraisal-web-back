@@ -10,7 +10,6 @@ const { perform, validate, and } = require('../validators');
 const { REPORT_TEMPLATES } = require('../../config/constants').securities;
 
 const ReportTemplateService = {
-
   /**
    * @param {string} name
    * @param {any} user
@@ -40,12 +39,16 @@ const ReportTemplateService = {
     const dbUser = await UserService.getUser(user.id);
     const templates = await ReportTemplateModel.find({
       organizationId: dbUser.organization.id,
-    }).populate([{
-      path: 'createdUser',
-      select: 'username',
-    }]).select({
-      "template": 0,
-    });
+    })
+      .populate([
+        {
+          path: 'createdUser',
+          select: 'username',
+        },
+      ])
+      .select({
+        template: 0,
+      });
     return templates;
   },
 
@@ -88,10 +91,14 @@ const ReportTemplateService = {
       validate.userAuthorized(user, REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.update),
     ]);
     await perform(validations);
-    const result = await ReportTemplateModel.findByIdAndUpdate(id, {
-      ...template,
-      modifiedUser: user.id,
-    }, { new: true }).populate([
+    const result = await ReportTemplateModel.findByIdAndUpdate(
+      id,
+      {
+        ...template,
+        modifiedUser: user.id,
+      },
+      { new: true },
+    ).populate([
       { path: 'createdUser modifiedUser', select: 'username' },
       { path: 'organizationId', select: 'name' },
     ]);
@@ -114,13 +121,13 @@ const ReportTemplateService = {
    *    parameters: [
    *      "path1",
    *      "path2",
-   *      ...   
+   *      ...
    *    ]
    *  },
    *  ...
    * ]
-   * @param {string} id 
-   * @param {any} user 
+   * @param {string} id
+   * @param {any} user
    */
   async getTempalteParameters(id, user) {
     const validSteps = ['$match'];
@@ -136,18 +143,20 @@ const ReportTemplateService = {
 
       block.paths = traverse
         .paths(a.aggregation)
-        .filter(s => s.length > 2 && validSteps.indexOf(s[1]) !== -1)
-        .map(p => p.join('.'));
+        .filter((s) => s.length > 2 && validSteps.indexOf(s[1]) !== -1)
+        .map((p) => p.join('.'));
       result.push(block);
-    })
+    });
     return result;
   },
 
   async processAggregation(aggregation, user) {
     await validate.isAggregationValid(aggregation)();
     const aggr = JSON.parse(
-      (await this.aggregationPreProcess(aggregation))
-        .replace('"$__REQUSER__$"', `{ "$toObjectId": "${user.id}"}`)
+      (await this.aggregationPreProcess(aggregation)).replace(
+        '"$__REQUSER__$"',
+        `{ "$toObjectId": "${user.id}"}`,
+      ),
     );
     const data = {};
     const validations = aggr.map((a) =>
@@ -163,15 +172,15 @@ const ReportTemplateService = {
 
   /**
    * Insert a limit step in the aggregation
-   * @param {String} aggregation 
-   * @param {Number} limit 
+   * @param {String} aggregation
+   * @param {Number} limit
    */
   async sampleAggregtion(aggregation, limit) {
     await perform(validate.isAggregationValid(aggregation));
     const aggregationJSON = JSON.parse(aggregation);
     aggregationJSON.forEach((a, idx) => {
       aggregationJSON[idx].aggregation = a.aggregation.concat({
-        $limit: limit
+        $limit: limit,
       });
     });
     return JSON.stringify(aggregationJSON);
@@ -179,13 +188,15 @@ const ReportTemplateService = {
 
   /**
    * Generate the report and return the Blob
-   * @param {Object} data 
-   * @param {Object} user 
+   * @param {Object} data
+   * @param {Object} user
    */
   async render(data, report, user) {
-    const templateBuffer = (await ReportTemplateModel.findById(report.template.id, {
-      template: 1
-    })).template;
+    const templateBuffer = (
+      await ReportTemplateModel.findById(report.template.id, {
+        template: 1,
+      })
+    ).template;
     const finalPath = path.join(os.tmpdir(), user.id, 'templates', report.template.filename);
     fs.mkdirSync(path.join(os.tmpdir(), user.id, 'templates'), { recursive: true });
     fs.writeFileSync(finalPath, templateBuffer);
@@ -193,63 +204,62 @@ const ReportTemplateService = {
       carbone.render(finalPath, data, (err, result) => {
         if (err) return rej(err);
         return res(result);
-      })
-    })
+      });
+    });
   },
 
   /**
    * Generate a report from buffer template
-   * @param {any} data 
-   * @param {Buffer} buffer 
-   * @param {any} user 
+   * @param {any} data
+   * @param {Buffer} buffer
+   * @param {any} user
    */
   async renderFromBuf(data, buffer, user, filename = 'buffer-template') {
     const finalPathFolder = path.join(os.tmpdir(), user.id, 'templates');
     // Only create folder if doesn't already exist
-    if (!fs.existsSync(finalPathFolder))
-      fs.mkdirSync(finalPathFolder, { recursive: true });
+    if (!fs.existsSync(finalPathFolder)) fs.mkdirSync(finalPathFolder, { recursive: true });
     const finalPath = path.join(finalPathFolder, filename);
     fs.writeFileSync(finalPath, buffer);
     return new Promise((res, rej) => {
       carbone.render(finalPath, data, (err, result) => {
         if (err) return rej(err);
         return res(result);
-      })
-    })
+      });
+    });
   },
 
   /**
    * Modify the aggregation before applying it to the database
-   * @param {string} aggregation 
+   * @param {string} aggregation
    */
   async aggregationPreProcess(aggregation) {
     const aggregationJSON = JSON.parse(aggregation);
     // Add a field for the requesting user
     const fieldsStep = {
       $addFields: {
-        "REQUSER": "$__REQUSER__$",
-      }
-    }
+        REQUSER: '$__REQUSER__$',
+      },
+    };
     // populate REQUSER with user info
     const lookupStep = {
       $lookup: {
         from: 'users',
         localField: 'REQUSER',
         foreignField: '_id',
-        as: 'REQUSER'
-      }
-    }
+        as: 'REQUSER',
+      },
+    };
     const firstElement = {
       $addFields: {
-        "REQUSER": {
-          $first: "$REQUSER",
-        }
-      }
-    }
-    aggregationJSON.forEach(step => {
+        REQUSER: {
+          $first: '$REQUSER',
+        },
+      },
+    };
+    aggregationJSON.forEach((step) => {
       const s = step;
       s.aggregation = [].concat(fieldsStep, lookupStep, firstElement, step.aggregation);
-    })
+    });
     return JSON.stringify(aggregationJSON);
   },
 };

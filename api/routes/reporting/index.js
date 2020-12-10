@@ -1,3 +1,3 @@
-const reportingRouter = require("./reporting");
+const reportingRouter = require('./reporting');
 
 module.exports = reportingRouter;

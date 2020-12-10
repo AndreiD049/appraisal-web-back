@@ -1,12 +1,16 @@
-const { Types } = require("mongoose");
+const { Types } = require('mongoose');
 const { OrganizationModel } = require('../../models/OrganizationModel');
 
 const data = [
   {
-    name: "Test",
+    name: 'Test',
     createdUser: new Types.ObjectId(),
-  }
-]
+  },
+  {
+    name: 'Evil corp.',
+    createdUser: new Types.ObjectId(),
+  },
+];
 
 const organizations = async () => {
   await OrganizationModel.deleteMany({});

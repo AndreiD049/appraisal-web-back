@@ -21,6 +21,6 @@ describe('test', () => {
       // wait 3 seconds by default
       // await new Promise(res => setTimeout(res, 1000));
       expect(true).toBe(true);
-    })
+    });
   });
 });

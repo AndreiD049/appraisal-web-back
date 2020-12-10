@@ -1,5 +1,5 @@
-const { Types } = require("mongoose");
-const TeamModel = require("../../models/TeamModel");
+const { Types } = require('mongoose');
+const TeamModel = require('../../models/TeamModel');
 
 const data = [
   {
@@ -14,7 +14,7 @@ const data = [
     name: 'Team C',
     createdUser: new Types.ObjectId(),
   },
-]
+];
 
 const teams = async () => {
   await TeamModel.TeamModel.deleteMany({});

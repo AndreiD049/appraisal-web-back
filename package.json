@@ -35,5 +35,10 @@
     "jest": "^26.6.3",
     "nodemon": "^2.0.4",
     "supertest": "^6.0.1"
+  },
+  "config": {
+    "mongodbMemoryServer": {
+      "version": "latest"
+    }
   }
 }

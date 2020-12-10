@@ -18,18 +18,20 @@ const ReportingService = {
     const userDb = await UserService.getUser(user.id);
     const reports = await ReportsModel.find({
       organizationId: userDb.organization,
-    }).populate([
-      { path: 'createdUser', select: 'username' },
-      { path: 'organizationId', select: 'name' }
-    ]).select({
-      id: 1,
-      name: 1,
-      description: 1,
-      createdUser: 1,
-      createdDate: 1,
-      organizationId: 1,
-      parameters: 1,
-    });
+    })
+      .populate([
+        { path: 'createdUser', select: 'username' },
+        { path: 'organizationId', select: 'name' },
+      ])
+      .select({
+        id: 1,
+        name: 1,
+        description: 1,
+        createdUser: 1,
+        createdDate: 1,
+        organizationId: 1,
+        parameters: 1,
+      });
     return reports;
   },
 
@@ -42,7 +44,7 @@ const ReportingService = {
       path: 'template',
       select: {
         template: 0,
-      }
+      },
     });
     return report;
   },
@@ -56,28 +58,32 @@ const ReportingService = {
   },
 
   /**
-   * @param {string} id 
+   * @param {string} id
    * @param {any} report Report updated body
-   * @param {any} user 
+   * @param {any} user
    */
   async updateReport(id, report, user) {
     await perform(validate.userAuthorized(user, REPORTS.code, REPORTS.grants.update));
-    const result = await ReportsModel.findByIdAndUpdate(id, {
-      ...report,
-      modifiedUser: user.id,
-    }, { new: true }).populate({
+    const result = await ReportsModel.findByIdAndUpdate(
+      id,
+      {
+        ...report,
+        modifiedUser: user.id,
+      },
+      { new: true },
+    ).populate({
       path: 'template',
       select: {
         template: 0,
-      }
+      },
     });
     return result;
   },
 
   /**
    * Delete a report
-   * @param {*} id 
-   * @param {*} user 
+   * @param {*} id
+   * @param {*} user
    */
   async deleteReport(id, user) {
     await perform(validate.userAuthorized(user, REPORTS.code, REPORTS.grants.delete));
@@ -99,16 +105,19 @@ const ReportingService = {
    * @returns {Promise<Blob>} generated file
    */
   async generateReport(user, id, params) {
-   // 1. Get the report by id
-   //  - if report doesn't exist, abort
+    // 1. Get the report by id
+    //  - if report doesn't exist, abort
     const report = await this.getReport(user, id);
-    await perform(validate.isTruthy(report, 'Report doesn\'t exists.'));
-   // 2. Get the aggregation of the report template
+    await perform(validate.isTruthy(report, "Report doesn't exists."));
+    // 2. Get the aggregation of the report template
     const { aggregation } = report.template;
     const aggregationJSON = JSON.parse(aggregation);
-   // 3. Substitute the parameters to the tempalte aggregation
+    // 3. Substitute the parameters to the tempalte aggregation
     await this.substituteParams(aggregationJSON, params);
-    const data = await ReportTemplateService.processAggregation(JSON.stringify(aggregationJSON), user);
+    const data = await ReportTemplateService.processAggregation(
+      JSON.stringify(aggregationJSON),
+      user,
+    );
     const result = await ReportTemplateService.render(data, report, user);
     return result;
   },
@@ -118,7 +127,7 @@ const ReportingService = {
    *  - if param value not empty:
    *    # replace the value in aggregation with param value
    * 2. Return aggregation
-   * @param {Aggregation} aggregation 
+   * @param {Aggregation} aggregation
    * @param {[{name: String, path: String, value: String}]} params - params inserted by user
    * @returns {Aggregation} adjusted aggregation
    */
@@ -142,22 +151,26 @@ const ReportingService = {
    *    - Check if index is numeric and is integer
    *  - rest of the tokens are object keys of the aggregations
    * 2. Once all tokens were applied, replace the aggregation value with param value
-   * @param {Aggregation} aggregation 
+   * @param {Aggregation} aggregation
    * @param {{name: String, path: String, value: String}} param - params inserted by user
    */
   async substituteParam(aggregation, param) {
     const [name, index, ...keys] = param.path.split('.');
-    const blockIndex = aggregation.map(a => a.name).indexOf(name)
-    await perform(and([
-      validate.isTruthy(blockIndex !== -1, `There is no such block in the aggregation ${name}`),
-      validate.isTruthy(Number.isInteger(+index), `Path index is not valid - ${param.path}`),
-    ]));
+    const blockIndex = aggregation.map((a) => a.name).indexOf(name);
+    await perform(
+      and([
+        validate.isTruthy(blockIndex !== -1, `There is no such block in the aggregation ${name}`),
+        validate.isTruthy(Number.isInteger(+index), `Path index is not valid - ${param.path}`),
+      ]),
+    );
     const block = aggregation[blockIndex];
     const blockAggregation = block.aggregation;
-    await perform(and([
-      validate.isTruthy(blockAggregation.length, 'Aggregation should be an array'),
-      validate.isTruthy((blockAggregation.length - 1) >= +index , 'Aggregation index out of bounds'),
-    ]));
+    await perform(
+      and([
+        validate.isTruthy(blockAggregation.length, 'Aggregation should be an array'),
+        validate.isTruthy(blockAggregation.length - 1 >= +index, 'Aggregation index out of bounds'),
+      ]),
+    );
     // concrete pipeline stage
     const step = blockAggregation[+index];
     if (!traverse.has(step, keys)) {
@@ -178,7 +191,6 @@ const ReportingService = {
       return param.value;
     }
   },
-
 };
 
 module.exports = ReportingService;

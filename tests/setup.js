@@ -13,4 +13,4 @@ module.exports = async () => {
   await create();
   await conn.connection.close();
   await conn.disconnect();
-}
+};

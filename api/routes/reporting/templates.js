@@ -7,7 +7,6 @@ const { REPORT_TEMPLATES } = require('../../../config/constants').securities;
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-
 templateRouter.get(
   '/',
   AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.read),
@@ -18,21 +17,21 @@ templateRouter.get(
     } catch (err) {
       next(err);
     }
-  }
-)
+  },
+);
 
 templateRouter.get(
   '/:id',
   AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.read),
   async (req, res, next) => {
     try {
-      const {id} = req.params;
+      const { id } = req.params;
       const template = await ReportTemplateService.getTemplate(id, req.user);
       res.json(template);
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -66,13 +65,13 @@ templateRouter.put(
   AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.update),
   async (req, res, next) => {
     try {
-      const {id} = req.params;
+      const { id } = req.params;
       const updated = await ReportTemplateService.updateTemplate(id, req.body, req.user);
       res.json(updated);
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 templateRouter.delete(
@@ -80,16 +79,16 @@ templateRouter.delete(
   AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.delete),
   async (req, res, next) => {
     try {
-      const {id} = req.params;
+      const { id } = req.params;
       await ReportTemplateService.deleteTemplate(id, req.user);
       res.status(204).end();
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
-/** 
+/**
  * Get template parameters.
  * Template parameters are paths to aggregation $match stages
  * When creating the report, user will select the parameters that can be modified.
@@ -99,13 +98,13 @@ templateRouter.get(
   AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.read),
   async (req, res, next) => {
     try {
-      const {id} = req.params;
+      const { id } = req.params;
       const params = await ReportTemplateService.getTempalteParameters(id, req.user);
       res.json(params);
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 /**
@@ -140,7 +139,8 @@ templateRouter.post(
     } catch (err) {
       next(err);
     }
-  });
+  },
+);
 
 /**
  * Retrieve sample data
@@ -154,7 +154,7 @@ templateRouter.post(
       const limit = +req.query.limit || 2;
       const data = await ReportTemplateService.processAggregation(
         await ReportTemplateService.sampleAggregtion(aggregation, limit),
-        req.user
+        req.user,
       );
       res.json(data);
     } catch (err) {

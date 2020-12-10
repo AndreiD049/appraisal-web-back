@@ -11,17 +11,15 @@ const isAggregationValid = (aggregation, message = null) => async () => {
     return {
       result: true,
       message,
-    }
+    };
   } catch (err) {
     return {
       result: false,
-      message: message
-        ? `${message} - ${err.message}`
-        : `Aggregation not valid - ${err.message}`
-    }
+      message: message ? `${message} - ${err.message}` : `Aggregation not valid - ${err.message}`,
+    };
   }
 };
 
 module.exports = {
   isAggregationValid,
-}
+};
