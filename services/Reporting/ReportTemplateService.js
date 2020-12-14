@@ -123,7 +123,7 @@ const ReportTemplateService = {
    * @param {any} user 
    */
   async getTempalteParameters(id, user) {
-    const validSteps = ['$match'];
+    const validSteps = ['$match', '$lookup'];
     const template = await this.getTemplate(id, user);
     if (!template) return null;
     const aggregation = JSON.parse(template.aggregation);
