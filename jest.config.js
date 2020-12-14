@@ -5,5 +5,6 @@ module.exports = async () => {
     coveragePathIgnorePatterns: ['/node_modules/'],
     preset: '@shelf/jest-mongodb',
     globalSetup: '<rootDir>/tests/setup.js',
+    globalTeardown: '<rootDir>/tests/teardown.js',
   };
 };

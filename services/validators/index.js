@@ -57,20 +57,29 @@ const andSync = (validations) => () => {
  * @return {function(): {result: boolean, message: string}} validations
  */
 const or = (validations, message = null) => async () => {
+  // sequential execution
+  async function iterate(vals) {
+    if (!vals.length) {
+      throw new Error('Invalid validations. Expected array.');
+    }
+    if (vals.length === 1) {
+      return vals[0]();
+    }
+    const first = await vals[0]();
+    if (first.result) {
+      return first;
+    }
+    return iterate(vals.slice(1));
+  }
+
   try {
     if (validations.length === 0) {
       throw new Error('No validations provided');
     }
-    const results = await Promise.all(validations.map((v) => v()));
-    if (results.some((v) => v.result)) {
-      const result = results.find((v) => v.result);
-      if (message) result.message = message;
-      return result;
-    }
-    if (message) results[results.length - 1].message = message;
-    return results[results.length - 1];
+    const result = await iterate(validations);
+    if (message) result.message = message;
+    return result;
   } catch (err) {
-    console.error(err);
     return {
       result: false,
       message: message || 'error',

@@ -190,13 +190,14 @@ const AppraisalService = {
     // Get items of current period/User
     const items = await AppraisalItemModel.find({
       periodId: id,
-    }).exec();
+    }).populate({ path: 'createdUser modifiedUser', select: 'username' });
 
     return items;
   },
 
   async getItemById(itemId) {
-    const item = await AppraisalItemModel.findById(itemId).exec();
+    const item = await AppraisalItemModel.findById(itemId)
+      .populate({ path: 'createdUser modifiedUser', select: 'username' });
     return item;
   },
 
@@ -221,14 +222,14 @@ const AppraisalService = {
    */
   async addItemToPeriod(periodId, item, user) {
     const period = await this.getPeriodById(periodId);
-    const userDb = await UserService.getUser(user.id);
+    const userDb = await UserService.getUser(user?.id);
 
     const validations = and([
       validate.userExists(userDb),
       validate.itemExists(item),
       or([
         validate.periodStatus(period, 'Finished'),
-        not(validate.periodLocked(period, userDb.id), 'Cannot add items to locked period'),
+        not(validate.periodLocked(period, userDb?.id), 'Cannot add items to locked period'),
       ]),
       validate.periodExists(period),
       validate.itemSameUser(item, userDb),
@@ -241,7 +242,7 @@ const AppraisalService = {
           validate.periodStatus(period, 'Finished'),
           validate.userAuthorized(userDb, AD.code, AD.grants.createFinished),
         ]),
-      ]),
+      ], 'User is not authorized to add appraisal items.'),
     ]);
     await perform(validations);
 
@@ -255,14 +256,21 @@ const AppraisalService = {
       createdUser: user.id,
     }).save();
 
-    if (period.status === 'Finished') return this.finishItem(document);
+    if (period.status === 'Finished' && document.status !== 'Finished') { 
+      return this.finishItem(document)
+    };
     return AppraisalItemModel.populate(document, { path: 'createdUser', select: 'username' });
   },
 
   async addItem(item, user) {
+    const dbUser = await UserService.getUser(user?.id);
+
+    const validations = validate.userAuthorized(dbUser, AD.code, AD.grants.create);
+    await perform(validations);
+
     const model = new AppraisalItemModel({
       ...item,
-      organizationId: user.organization.id ? user.organization.id : user.organization,
+      organizationId: dbUser.organization.id,
       user: user.id,
       createdUser: user.id,
     });
@@ -598,7 +606,7 @@ const AppraisalService = {
       await period.save();
       return true;
     });
-    // return true or flase whether the transaction was successfull
+    // return true or false whether the transaction was successfull
     return transaction.result.ok === 1;
   },
 };

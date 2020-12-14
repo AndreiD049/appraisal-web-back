@@ -4,7 +4,9 @@ module.exports = {
       version: '4.4.1',
       skipMD5: true,
     },
-    instance: {},
+    instance: {
+      dbName: 'testAdminTools',
+    },
     autoStart: false,
   },
 };

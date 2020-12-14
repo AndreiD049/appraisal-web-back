@@ -20,6 +20,14 @@ const data = [
     teams: ['Team A'],
     organizations: ['Test'],
   },
+  {
+    username: 'reader@test.com',
+    fullname: 'test user',
+    role: null,
+    organization: 'Test',
+    teams: ['Team A'],
+    organizations: ['Test'],
+  },
 ];
 
 const users = async () => {
@@ -38,7 +46,7 @@ const users = async () => {
       );
       await UserModel.UserModel.create({
         ...user,
-        role: role.id,
+        role: role?.id,
         organization: org.id,
         organizations: orgs.map((o) => o.id),
         teams: teams.map((t) => t.id),

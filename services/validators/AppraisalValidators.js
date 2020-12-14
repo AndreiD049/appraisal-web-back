@@ -55,8 +55,8 @@ const itemType = (item, type) => async () => ({
 });
 
 const itemSameUser = (item, user) => async () => ({
-  result: Boolean(String(item.user) === String(user.id)),
-  message: `Item '${item.content}'s user is not the same as '${user.username}'`,
+  result: Boolean(String(item?.user) === String(user?.id)),
+  message: `Item '${item?.content}'s user is not the same as '${user?.username}'`,
 });
 
 module.exports = {

@@ -1,3 +1,6 @@
-const mongoose = require('mongoose');
+const tearDown = require('@shelf/jest-mongodb/teardown');
 
-module.exports = async () => {};
+module.exports = async () => {
+  global.replSet.stop();
+  tearDown();
+};
