@@ -211,8 +211,7 @@ const AppraisalService = {
     delete copy.id;
     delete copy.modifiedUser;
     copy.createdDate = new Date();
-    const result = await copy.save({ session });
-    return result;
+    return copy;
   },
 
   /*
@@ -552,7 +551,7 @@ const AppraisalService = {
    * 3. If item is already finished, throw an error and abort transaction
    */
   async finishItem(item, session = null) {
-    const itemDb = await AppraisalItemModel.findById(item.id);
+    const itemDb = await AppraisalItemModel.findById(item.id).session(session);
 
     const validations = and([
       not(validate.itemStatus(itemDb, 'Finished')),
@@ -596,18 +595,20 @@ const AppraisalService = {
     // Create a session to use in transaction
     const session = await AppraisalPeriodModel.startSession();
     const transaction = await session.withTransaction(async () => {
-      const period = await AppraisalPeriodModel.findById(periodId).session(session);
-      period.status = 'Finished';
-      // Find all items related to this period
-      const items = await this.getItemsByPeriodId(period.id);
-      const modifications = items.map((i) => this.finishItem(i, session));
-      await Promise.all(modifications);
-
-      await period.save();
-      return true;
+        const period = await AppraisalPeriodModel.findById(periodId).session(session);
+        period.status = 'Finished';
+        // Find all items related to this period
+        const items = await this.getItemsByPeriodId(period.id);
+        const modifications = items.map((i) => this.finishItem(i, session));
+        const results = await Promise.allSettled(modifications);
+        const errors = results.filter(r => r.status === 'rejected');
+        if (errors.length > 0) {
+          throw new Error(`Transaction rejected.\n${errors.map(e => e.reason).join('\n')}`);
+        }
+        await period.save();
     });
-    // return true or false whether the transaction was successfull
-    return transaction.result.ok === 1;
+    // return true or flase whether the transaction was successfull
+    return transaction ? transaction.result.ok === 1 : false;
   },
 };
 
