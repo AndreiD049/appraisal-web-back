@@ -903,7 +903,7 @@ describe('Appraisal service tests', () => {
     ];
     const items = await AppraisalItemModel.create(appraisalItems);
 
-    const result = await AppraisalService.copyItem(items[0]);
+    const result = await (await AppraisalService.copyItem(items[0])).save();
     expect(result).toBeTruthy();
     expect(result.content).toBe(items[0].content);
     const allItems = await AppraisalItemModel.find({});
@@ -925,14 +925,13 @@ describe('Appraisal service tests', () => {
     ];
     const items = await AppraisalItemModel.create(appraisalItems);
     const session = await AppraisalItemModel.startSession();
-    const transaction = await session.withTransaction(async () => {
-      const result = await AppraisalService.copyItem(items[0], session);
-      expect(result).toBeTruthy();
-      expect(result.content).toBe(items[0].content);
+    await session.withTransaction(async () => {
+        const result = await (await AppraisalService.copyItem(items[0], session)).save();
+        expect(result).toBeTruthy();
+        expect(result.content).toBe(items[0].content);
     });
     const allItems = await AppraisalItemModel.find({});
     expect(allItems.length).toBe(appraisalItems.length + 1);
-    expect(transaction.result.ok).toBe(1);
     await AppraisalItemModel.deleteMany({});
   });
 
@@ -951,7 +950,7 @@ describe('Appraisal service tests', () => {
     const items = await AppraisalItemModel.create(appraisalItems);
     const session = await AppraisalItemModel.startSession();
     const transaction = session.withTransaction(async () => {
-      const result = await AppraisalService.copyItem(items[0], session);
+      const result = await (await AppraisalService.copyItem(items[0], session)).save({session});
       expect(result).toBeTruthy();
       expect(result.content).toBe(items[0].content);
 
@@ -1391,6 +1390,8 @@ describe('Appraisal service tests', () => {
       content: 'Test Planned',
       periodId: null,
     }));
+
+    await AppraisalItemModel.deleteMany({});
   });
 
   it('Adding a item withou having access', async () => {
@@ -1405,6 +1406,631 @@ describe('Appraisal service tests', () => {
     }
     const result = AppraisalService.addItem(item, users[2]);
     await expect(result).rejects.toThrow(/^Access denied.*APPRAISAL DETAILS.*create$/);
+  });
+
+  /**
+   * Add item to another member's period.
+   */
+  it('Should add an item to user\'s period', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Active',
+          organizationId: organizations[0].id,
+          createdUser: users[1].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Test Planned',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[1].id,
+      createdUser: users[0].id,
+    };
+    const admin = users[0];
+    const user = users[1];
+
+    const result = await AppraisalService.addItemToPeriodOfMember(period.id, item, admin);
+    expect(result).not.toBeFalsy();
+    expect(result).toHaveProperty('user');
+    expect(result.user.toString()).toBe(user.id.toString());
+
+    const allItems = await AppraisalItemModel.find({});
+    expect(allItems.length).toBe(1);
+
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Should add an item to user\'s finished period', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Finished',
+          organizationId: organizations[0].id,
+          createdUser: users[1].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Should add an item to user\'s finished period',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[1].id,
+      createdUser: users[0].id,
+    };
+    const admin = users[0];
+    const user = users[1];
+
+    let result = await AppraisalService.addItemToPeriodOfMember(period.id, item, admin);
+    expect(result).not.toBeFalsy();
+    expect(result).toHaveProperty('user');
+    expect(result.user.toString()).toBe(user.id.toString());
+
+    let allItems = await AppraisalItemModel.find({});
+    expect(allItems.length).toBe(2);
+
+    const itemTraining = {
+      type: 'Training_Planned',
+      status: 'Active',
+      content: 'Should add an item to user\'s finished period',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[1].id,
+      createdUser: users[0].id,
+    };
+
+    result = await AppraisalService.addItemToPeriodOfMember(period.id, itemTraining, admin);
+    expect(result).not.toBeFalsy();
+    expect(result).toHaveProperty('user');
+    expect(result.user.toString()).toBe(user.id.toString());
+
+    allItems = await AppraisalItemModel.find({});
+    expect(allItems.length).toBe(4);
+
+    const itemAchieved = {
+      type: 'Achieved',
+      status: 'Active',
+      content: 'Should add an item to user\'s finished period',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[1].id,
+      createdUser: users[0].id,
+    };
+
+    result = await AppraisalService.addItemToPeriodOfMember(period.id, itemAchieved, admin);
+    expect(result).not.toBeFalsy();
+    expect(result).toHaveProperty('user');
+    expect(result.user.toString()).toBe(user.id.toString());
+
+    allItems = await AppraisalItemModel.find({});
+    expect(allItems.length).toBe(5);
+
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Cannot addItemToPeriodOfMember for myself', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Finished',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Cannot addItemToPeriodOfMember for myself',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[0].id,
+      createdUser: users[0].id,
+    };
+    const admin = users[0];
+
+    const result = AppraisalService.addItemToPeriodOfMember(period.id, item, admin);
+
+    await expect(result).rejects.toThrow(/^Cannot add item to your own user/i);
+
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Cannot add item if not authorized (Active period)', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Active',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Cannot addItemToPeriodOfMember for myself',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[2].id,
+      createdUser: users[0].id,
+    };
+    const user = users[1];
+
+    const result = AppraisalService.addItemToPeriodOfMember(period.id, item, user);
+
+    await expect(result).rejects.toThrow(/^Access denied/i);
+
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Cannot add item if not authorized (Finished period)', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Finished',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Cannot add item if not authorized (Finished period)',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[2].id,
+      createdUser: users[0].id,
+    };
+    const user = users[1];
+
+    const result = AppraisalService.addItemToPeriodOfMember(period.id, item, user);
+
+    await expect(result).rejects.toThrow(/^Access denied/i);
+
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Should update an existing item', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Active',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Cannot add item if not authorized (Finished period)',
+      periodId: null,
+      organizationId: organizations[0].id,
+      user: users[0].id,
+      createdUser: users[0].id,
+    };
+
+    const itemResult = await AppraisalItemModel.create(item);
+    expect(itemResult).toBeTruthy();
+
+    const update = itemResult.toJSON();
+
+    update.content = 'UPDATED';
+    update.createdUser = {
+      invalid: 'data',
+      should: 'ignore',
+    };
+
+    const result = await AppraisalService.updateItem(itemResult.id, update, users[0]);
+
+    expect(result).toBeTruthy();
+    expect(result.content).toBe('UPDATED');
+    
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+  it('Should throw error if item is not provided', async () => {
+    const result = AppraisalService.updateItem(null, {content: 'Test'}, users[0]);
+
+    await expect(result).rejects.toThrow(/Item doesn't exist/);
+  });
+
+  it('Should not update the item if period is locked', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Active',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: true,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Should not update the item if period is locked',
+      periodId: period.id,
+      organizationId: organizations[0].id,
+      user: users[0].id,
+      createdUser: users[0].id,
+    };
+
+    const itemResult = await AppraisalItemModel.create(item);
+    expect(itemResult).toBeTruthy();
+
+    const update = itemResult.toJSON();
+
+    update.content = 'UPDATED';
+    update.createdUser = {
+      invalid: 'data',
+      should: 'ignore',
+    };
+
+    const result = AppraisalService.updateItem(itemResult.id, update, users[0]);
+
+    await expect(result).rejects.toThrow(/Cannot update items in a locked period/);
+    
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Should not update an item with related entries', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Active',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Should not update the item if period is locked',
+      periodId: period.id,
+      relatedItemId: new mongoose.Types.ObjectId(),
+      organizationId: organizations[0].id,
+      user: users[0].id,
+      createdUser: users[0].id,
+    };
+
+    const itemResult = await AppraisalItemModel.create(item);
+    expect(itemResult).toBeTruthy();
+
+    const update = itemResult.toJSON();
+
+    update.content = 'UPDATED';
+    update.createdUser = {
+      invalid: 'data',
+      should: 'ignore',
+    };
+
+    const result = AppraisalService.updateItem(itemResult.id, update, users[0]);
+
+    await expect(result).rejects.toThrow(/You cannot update an item with related entries/);
+    
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Cannot update an item if not authorized (Active)', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Active',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[2].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Cannot update an item if not authorized (Active)',
+      periodId: period.id,
+      organizationId: organizations[0].id,
+      user: users[2].id,
+      createdUser: users[2].id,
+    };
+
+    const itemResult = await AppraisalItemModel.create(item);
+    expect(itemResult).toBeTruthy();
+
+    const update = itemResult.toJSON();
+
+    update.content = 'UPDATED';
+    update.createdUser = {
+      invalid: 'data',
+      should: 'ignore',
+    };
+
+    const result = AppraisalService.updateItem(itemResult.id, update, users[2]);
+
+    await expect(result).rejects.toThrow(/Access denied. Cannot update item./);
+    
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Cannot update an item if not authorized (Finished)', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Finished',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[2].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Cannot update an item if not authorized (Active)',
+      periodId: period.id,
+      organizationId: organizations[0].id,
+      user: users[2].id,
+      createdUser: users[2].id,
+    };
+
+    const itemResult = await AppraisalItemModel.create(item);
+    expect(itemResult).toBeTruthy();
+
+    const update = itemResult.toJSON();
+
+    update.content = 'UPDATED';
+    update.createdUser = {
+      invalid: 'data',
+      should: 'ignore',
+    };
+
+    const result = AppraisalService.updateItem(itemResult.id, update, users[2]);
+
+    await expect(result).rejects.toThrow(/Access denied. Cannot update item./);
+    
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  it('Cannot update an item of another user with updateItem', async () => {
+    const period = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Active',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[2].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    )[0];
+    expect(period).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Active',
+      content: 'Cannot update an item of another user with updateItem',
+      periodId: period.id,
+      organizationId: organizations[0].id,
+      user: users[2].id,
+      createdUser: users[2].id,
+    };
+
+    const itemResult = await AppraisalItemModel.create(item);
+    expect(itemResult).toBeTruthy();
+
+    const update = itemResult.toJSON();
+
+    update.content = 'UPDATED';
+    update.createdUser = {
+      invalid: 'data',
+      should: 'ignore',
+    };
+
+    const result = AppraisalService.updateItem(itemResult.id, update, users[0]);
+
+    await expect(result).rejects.toThrow(/user is not the same/);
+    
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
+  });
+
+  // TODO: Rewrite test and method, item should not get unfinished, instead,
+  // all related entries should be just updated
+  it('Updates a finished item with related entries', async () => {
+    const periods = (
+      await AppraisalPeriodModel.create([
+        {
+          name: 'Period 1',
+          status: 'Finished',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[2].id,
+              locked: false,
+            },
+          ],
+        },
+        {
+          name: 'Period 2',
+          status: 'Finished',
+          organizationId: organizations[0].id,
+          createdUser: users[0].id,
+          users: [
+            {
+              _id: users[0].id,
+              locked: false,
+            },
+          ],
+        },
+      ])
+    );
+    expect(periods).not.toBeFalsy();
+
+    const item = {
+      type: 'Planned',
+      status: 'Finished',
+      content: 'Updates a finished item with related entries',
+      periodId: periods[0].id,
+      organizationId: organizations[0].id,
+      user: users[0].id,
+      createdUser: users[0].id,
+    };
+
+    const itemResult = await AppraisalItemModel.create(item);
+    expect(itemResult).toBeTruthy();
+
+    const temp = await AppraisalItemModel.create({
+      ...itemResult.toJSON(),
+      relatedItemId: itemResult.id,
+      periodId: periods[1].id, 
+    });
+
+    await AppraisalItemModel.create({
+      ...itemResult.toJSON(),
+      relatedItemId: temp.id,
+      periodId: null, 
+      status: 'Active',
+    });
+
+    const update = itemResult.toJSON();
+
+    update.content = 'UPDATED';
+    update.createdUser = {
+      invalid: 'data',
+      should: 'ignore',
+    };
+
+    const result = await AppraisalService.updateItem(itemResult.id, update, users[0]);
+
+    expect(result).toBeTruthy();
+    expect(result.content).toBe('UPDATED');
+    expect(result.createdUser).toHaveProperty('username');
+    expect(result.modifiedUser).toHaveProperty('username');
+    expect(result.modifiedUser.id.toString()).toBe(users[0].id.toString());
+
+    const allItems = await AppraisalItemModel.find({});
+    expect(allItems.length).toBe(3);
+    expect(allItems.map(i => i.content)).toEqual(expect.arrayContaining(
+      ['UPDATED', 'UPDATED', 'UPDATED']
+    ));
+    expect(allItems.map(i => i.periodId ? i.periodId.toString() : i.periodId)).toEqual(
+      [periods[0].id.toString(), periods[1].id.toString(), null]
+    );
+    expect(allItems.map(i => i.status)).toEqual(expect.arrayContaining(
+      ['Active', 'Finished', 'Finished']
+    ));
+    
+    await AppraisalPeriodModel.deleteMany({});
+    await AppraisalItemModel.deleteMany({});
   });
 
 });

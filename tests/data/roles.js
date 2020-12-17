@@ -14,6 +14,12 @@ const data = [
     securityLevel: 1,
     createdUser: new mongoose.Types.ObjectId(),
   },
+  {
+    name: 'Newcomer',
+    description: 'Zero permissions',
+    securityLevel: 0,
+    createdUser: new mongoose.Types.ObjectId(),
+  },
 ];
 
 const roles = async () => {

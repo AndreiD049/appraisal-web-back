@@ -289,7 +289,7 @@ const AppraisalService = {
     const validations = and([
       validate.itemExists(item),
       validate.periodExists(period),
-      not(validate.itemSameUser(item, userFrom)),
+      not(validate.itemSameUser(item, userFrom), 'Cannot add item to your own user.'),
       validate.userInTeam(userFrom, userTo),
       or([
         and([
@@ -300,7 +300,7 @@ const AppraisalService = {
           validate.periodStatus(period, 'Finished'),
           validate.userAuthorized(userFrom, ADO.code, ADO.grants.createFinished),
         ]),
-      ]),
+      ], 'Access denied. Cannot add items to other users'),
     ]);
     await perform(validations);
 
@@ -344,6 +344,7 @@ const AppraisalService = {
           'You cannot update an item with related entries',
         ),
       ]),
+      validate.itemSameUser(item, user),
       or([
         and([
           not(validate.itemStatus(item, 'Finished')),
@@ -353,34 +354,37 @@ const AppraisalService = {
           validate.itemStatus(item, 'Finished'),
           validate.userAuthorized(userDb, AD.code, AD.grants.updateFinished),
         ]),
-      ]),
+      ], 'Access denied. Cannot update item.'),
     ]);
     await perform(validations);
 
     const { status } = item;
 
-    const updateObject = update;
+    const updateObject = {
+      ...update,
+      modifiedUser: userDb.id,
+      createdUser: item.user,
+    };
+    // if status is finished, we want first to update the related items, if any
     if (status === 'Finished') {
-      // if current item's status is finished, we will first unfinish it
-      // This is done to remove all related entries first
-      // Also, we delete the status property from the update object,
-      // as we will finish the item later
-      await this.unFinishItem(item);
-      delete updateObject.status;
+      const updateRelated = updateObject;
+      delete updateRelated.periodId;
+      delete updateRelated.createdUser;
+      delete updateRelated.status;
+
+      const session = await AppraisalItemModel.startSession();
+      await session.withTransaction(async () => {
+        this.updateRelated(item, updateRelated)
+      });
     }
     const updated = await AppraisalItemModel.findByIdAndUpdate(
       itemId,
-      {
-        ...updateObject,
-        modifiedUser: userDb.id,
-        createdUser: item.user,
-      },
+      updateObject,
       { new: true },
     ).populate({
       path: 'createdUser modifiedUser',
       select: 'username',
     });
-    if (status === 'Finished') await this.finishItem(item);
     return updated;
   },
 
@@ -423,33 +427,32 @@ const AppraisalService = {
     await perform(validations);
 
     const { status } = item;
-    const updateObject = update;
-    delete updateObject.createdUser;
+
+    const updateObject = {
+      ...update,
+      modifiedUser: userFrom.id,
+      createdUser: item.user,
+    };
+    // if status is finished, we want first to update the related items, if any
     if (status === 'Finished') {
-      // if current item's status is finished, we will first unfinish it
-      // This is done to remove all related entries first
-      // Also, we delete the status property from the update object,
-      // as we will finish the item later
-      await this.unFinishItem(item);
-      delete updateObject.status;
+      const updateRelated = updateObject;
+      delete updateRelated.periodId;
+      delete updateRelated.createdUser;
+      delete updateRelated.status;
+
+      const session = await AppraisalItemModel.startSession();
+      await session.withTransaction(async () => {
+        this.updateRelated(item, updateRelated)
+      });
     }
     const updated = await AppraisalItemModel.findByIdAndUpdate(
       itemId,
-      {
-        ...updateObject,
-        modifiedUser: userFrom.id,
-      },
+      updateObject,
       { new: true },
-    )
-      .populate({
-        path: 'createdUser modifiedUser',
-        select: 'username',
-      })
-      .populate({
+    ).populate({
         path: 'createdUser modifiedUser',
         select: 'username',
       });
-    if (status === 'Finished') await this.finishItem(updated);
     return updated;
   },
 
@@ -535,7 +538,21 @@ const AppraisalService = {
     }
     await AppraisalItemModel.deleteMany({
       relatedItemId: item.id,
+    }, { session });
+  },
+
+  async updateRelated(item, update, session = null) {
+    const related = await AppraisalItemModel.find({
+      relatedItemId: item.id,
     });
+    if (related.length > 0) {
+      related.forEach(async (element) => {
+        await this.updateRelated(element, update, session);
+      });
+    }
+    await AppraisalItemModel.updateMany({
+      relatedItemId: item.id,
+    }, update, { session });
   },
 
   /**

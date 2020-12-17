@@ -17,9 +17,11 @@ const and = (validations, message = null) => async () => {
     if (results.every((v) => v.result)) {
       return results[0];
     }
-    return results.find((v) => v.result === false);
+    const result = results.find((v) => v.result === false);
+    if (message)
+      result.message = message;
+    return result;
   } catch (err) {
-    console.error(err);
     return {
       result: false,
       message: message || err.message,

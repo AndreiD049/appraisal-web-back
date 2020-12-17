@@ -23,7 +23,7 @@ const data = [
   {
     username: 'reader@test.com',
     fullname: 'test user',
-    role: null,
+    role: 'Newcomer',
     organization: 'Test',
     teams: ['Team A'],
     organizations: ['Test'],
