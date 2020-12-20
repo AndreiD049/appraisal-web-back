@@ -4,7 +4,10 @@ const { AuthorizeReq } = require('../../services/AuthorizationService').Authoriz
 
 appraisalItemsRouter.get('/', AuthorizeReq('APPRAISAL DETAILS', 'read'), async (req, res, next) => {
   try {
-    const { type } = req.query;
+    let { type } = req.query;
+    if (type.indexOf(',') !== -1) {
+      type = type.split(',');
+    }
     const items = await AppraisalService.getOrphanItems(req.user, type);
     res.json(items);
   } catch (err) {
