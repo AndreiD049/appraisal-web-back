@@ -366,6 +366,8 @@ const AppraisalService = {
       ...update,
       modifiedUser: userDb.id,
     };
+    // userCreated will not change
+    delete updateObject.createdUser;
     // if status is finished, we want first to update the related items, if any
     if (status === 'Finished') {
       const updateRelated = updateObject;
@@ -433,6 +435,8 @@ const AppraisalService = {
       ...update,
       modifiedUser: userFrom.id,
     };
+    // userCreated will not change
+    delete updateObject.createdUser;
     // if status is finished, we want first to update the related items, if any
     if (status === 'Finished') {
       const updateRelated = updateObject;
