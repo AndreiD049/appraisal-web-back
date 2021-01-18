@@ -228,6 +228,16 @@ const ReportTemplateService = {
     });
   },
 
+  // Render a report from a file template
+  async renderFromFile(data, templatePath, filename = 'report') {
+    return new Promise((res, rej) => {
+      carbone.render(templatePath, data, (err, result) => {
+        if (err) return rej(err);
+        return res(result);
+      });
+    })
+  },
+
   /**
    * Modify the aggregation before applying it to the database
    * @param {string} aggregation

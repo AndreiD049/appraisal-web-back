@@ -23,6 +23,7 @@ const AppraisalService = {
         { 'users._id': dbUser.id, status: 'Finished' },
         { status: 'Active', organizationId: dbUser.organization },
       ])
+      .sort('-createdDate')
       .populate({ path: 'createdUser modifiedUser', select: 'username' });
     return docs;
   },
@@ -109,7 +110,7 @@ const AppraisalService = {
     let userPeriod = period.users.find((u) => String(u._id) === String(userId));
     // If period doesn't exist, add it
     if (!userPeriod) {
-      const periodUpd = await this.addUserToPeriod(period.id, userDb);
+      const periodUpd = await this.addUserToPeriod(period.id, userDb, reqUser);
       userPeriod = periodUpd.users.find((u) => String(u._id) === String(userId));
     }
     userPeriod.locked = !userPeriod.locked;
@@ -123,11 +124,12 @@ const AppraisalService = {
     );
   },
 
-  async addUserToPeriod(periodId, user) {
+  async addUserToPeriod(periodId, user, reqUser) {
+    const req = reqUser || user;
     const userId = user?.id;
     if (userId) {
       // Check if user authorized
-      const validations = validate.userAuthorized(user, AP.code, AP.grants.update);
+      const validations = validate.userAuthorized(req, AP.code, AP.grants.update);
       await perform(validations);
 
       const newUser = new UserPeriodModel({

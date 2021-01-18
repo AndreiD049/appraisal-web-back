@@ -67,6 +67,25 @@ appraisalPeriodsRouter.get(
   },
 );
 
+// Update period
+appraisalPeriodsRouter.put(
+  '/:id',
+  AuthorizeReq('APPRAISAL PERIODS', 'update'),
+  async (req, res, next) => {
+    try {
+      const periodId = req.params.id;
+      const result = await AppraisalService.updatePeriod(periodId, req.body, req.user);
+      if (!result) {
+        res.status(400).end();
+      } else {
+        res.json(result);
+      }
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
 // Finish period and all it's items for the current user
 appraisalPeriodsRouter.post(
   '/:id/finish',

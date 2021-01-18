@@ -1,6 +1,7 @@
 const reportsRouter = require('express').Router();
 const multer = require('multer');
-const { ReportingService } = require('../../../services/Reporting');
+const { ReportingService, ReportTemplateService } = require('../../../services/Reporting');
+const AppraisalService = require('../../../services/AppraisalService');
 const { AuthorizeReq } = require('../../../services/AuthorizationService').AuthorizationService;
 const { REPORTS } = require('../../../config/constants').securities;
 
@@ -73,6 +74,42 @@ reportsRouter.post(
     }
   },
 );
+
+/**
+ * Generate appraisal report.
+ * Data provided:
+ * - dateFrom: Date
+ * - dateTo: Date
+ * - periods: [String] Period IDs
+ */
+reportsRouter.post('/appraisal-report', async (req, res, next) => {
+  // Verify if at least one parameter was provided
+  const { body } = req;
+  if (req.user || body.dateFrom || body.dateTo || (Array.isArray(body.periods && body.periods.length))) {
+    const dateFrom = body.dateFrom ? new Date(body.dateFrom) : null; 
+    const dateTo = body.dateTo ? new Date(body.dateTo) : null; 
+    const periods = Array.isArray(body.periods) ? body.periods : [];
+    // Get an array of period names to display in the report
+    const calls = periods.map((p) => AppraisalService.getPeriodById(p));
+    const periodStrings = (await Promise.all(calls)).map((p) => p.name);
+    // if so, create a mongodb aggregation with the parameters passed
+    const data = await ReportingService.getAppraisalReportData(req.user, dateFrom, dateTo, periods);
+    // if data was found generate a report using carbone
+    if (Array.isArray(data) && data.length) {
+      res.end(await ReportTemplateService.renderFromFile({
+        data,
+        dateFrom,
+        dateTo,
+        periods: periodStrings.join(', '),
+      }, './api/routes/reporting/templates/appraisal.xlsx', 'appraisal.xlsx'));
+    } else {
+      res.status(204).json({ error: 'No data available for provided filters' });
+    }
+    // if no data or empty dataset, return error to the user
+  } else {
+    res.status(400).json({ error: 'Invalid parameters provided' });
+  }
+});
 
 reportsRouter.put(
   '/:id',

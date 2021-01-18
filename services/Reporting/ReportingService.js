@@ -12,6 +12,9 @@ const { ReportsModel } = require('../../models/Reporting');
 const UserService = require('../UserService');
 const { validate, perform, and } = require('../validators');
 const { REPORTS } = require('../../config/constants').securities;
+const { AppraisalItemsView } = require('../../models/AppraisalItemModel');
+const { ObjectId } = require('mongoose').Types;
+const { isValidObjectId } = require('mongoose');
 
 const ReportingService = {
   async getReports(user) {
@@ -47,6 +50,93 @@ const ReportingService = {
       },
     });
     return report;
+  },
+
+  async getAppraisalReportData(reqUser, dateFrom, dateTo, periods = []) {
+    // Return only team members
+    const teamMembers = await UserService.getUserTeamMembers(reqUser);
+    const userDb = await UserService.getUser(reqUser.id);
+    const matchStep = { $match: {
+      user: { $in: teamMembers.map((m) => m.id).concat(userDb._id) }
+    }};
+    if (periods.length)
+      matchStep.$match.periodId = { 
+        $in: periods
+          .filter((period) => isValidObjectId(period))
+            .map((period) => (new ObjectId(period))) 
+        };
+    if (dateFrom) {
+      matchStep.$match.createdDate = {};
+      matchStep.$match.createdDate.$gt = dateFrom;
+    }
+    if (dateTo) {
+      matchStep.$match.createdDate = matchStep.$match.createdDate || {};
+      matchStep.$match.createdDate.$lt = dateTo;
+    }
+    const data = await AppraisalItemsView.aggregate([
+      matchStep,
+      {
+        $lookup: {
+          from: 'appraisalperiods',
+          localField: 'periodId',
+          foreignField: '_id',
+          as: 'periodDetails',
+        },
+      },
+      {
+        $addFields: {
+          periodDetails: {
+            $first: '$periodDetails',
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userDetails',
+        },
+      },
+      {
+        $addFields: {
+          userDetails: {
+            $first: '$userDetails',
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'createdUser',
+          foreignField: '_id',
+          as: 'createdUserDetails',
+        },
+      },
+      {
+        $addFields: {
+          createdUserDetails: {
+            $first: '$createdUserDetails',
+          },
+        },
+      },
+      {
+        $lookup: {
+          from: 'roles',
+          localField: 'userDetails.role',
+          foreignField: '_id',
+          as: 'userDetails.role',
+        },
+      },
+      {
+        $addFields: {
+          'userDetails.role': {
+            $first: '$userDetails.role',
+          },
+        },
+      }
+    ]);
+    return data || [];
   },
 
   async addReport(user, report) {

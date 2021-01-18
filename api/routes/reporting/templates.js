@@ -63,10 +63,15 @@ templateRouter.post(
 templateRouter.put(
   '/:id',
   AuthorizeReq(REPORT_TEMPLATES.code, REPORT_TEMPLATES.grants.update),
+  upload.single('template'),
   async (req, res, next) => {
     try {
       const { id } = req.params;
-      const updated = await ReportTemplateService.updateTemplate(id, req.body, req.user);
+      const update = req.body;
+      if (req.file && req.file.buffer) {
+        update.template = req.file.buffer;
+      }
+      const updated = await ReportTemplateService.updateTemplate(id, update, req.user);
       res.json(updated);
     } catch (err) {
       next(err);
