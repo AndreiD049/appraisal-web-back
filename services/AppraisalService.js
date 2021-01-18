@@ -432,7 +432,6 @@ const AppraisalService = {
     const updateObject = {
       ...update,
       modifiedUser: userFrom.id,
-      createdUser: item.user,
     };
     // if status is finished, we want first to update the related items, if any
     if (status === 'Finished') {
