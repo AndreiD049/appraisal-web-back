@@ -122,6 +122,21 @@ const ReportingService = {
       },
       {
         $lookup: {
+          from: 'users',
+          localField: 'modifiedUser',
+          foreignField: '_id',
+          as: 'modifiedUserDetails',
+        },
+      },
+      {
+        $addFields: {
+          modifiedUserDetails: {
+            $first: '$modifiedUserDetails',
+          },
+        },
+      },
+      {
+        $lookup: {
           from: 'roles',
           localField: 'userDetails.role',
           foreignField: '_id',
@@ -134,7 +149,15 @@ const ReportingService = {
             $first: '$userDetails.role',
           },
         },
-      }
+      },
+      {
+        $lookup: {
+          from: 'teams',
+          localField: 'userDetails.teams',
+          foreignField: '_id',
+          as: 'userTeams',
+        },
+      },
     ]);
     return data || [];
   },

@@ -4,8 +4,6 @@ const AppraisalService = require('../../services/AppraisalService');
 const UserService = require('../../services/UserService');
 const { AuthorizeReq } = require('../../services/AuthorizationService').AuthorizationService;
 
-const AP = constants.securities.APPRAISAL_PERIODS;
-const AD = constants.securities.APPRAISAL_DETAILS;
 const ADO = constants.securities.APPRAISAL_DETAILS_OTHER;
 
 // Get users active periods

@@ -124,14 +124,9 @@ const AppraisalService = {
     );
   },
 
-  async addUserToPeriod(periodId, user, reqUser) {
-    const req = reqUser || user;
+  async addUserToPeriod(periodId, user) {
     const userId = user?.id;
     if (userId) {
-      // Check if user authorized
-      const validations = validate.userAuthorized(req, AP.code, AP.grants.update);
-      await perform(validations);
-
       const newUser = new UserPeriodModel({
         _id: userId,
         locked: false,
