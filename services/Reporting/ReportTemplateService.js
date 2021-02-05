@@ -235,7 +235,7 @@ const ReportTemplateService = {
         if (err) return rej(err);
         return res(result);
       });
-    })
+    });
   },
 
   /**

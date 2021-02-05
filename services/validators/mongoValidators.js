@@ -18,7 +18,13 @@ const viewName = (view) => async () => ({
   message: `View name '${view}' is not valid.`,
 });
 
+const validSession = (session, message = null) => async () => ({
+  result: session?.constructor?.name === 'ClientSession',
+  message: message ?? 'Session is invalid',
+});
+
 module.exports = {
   viewExists,
   viewName,
+  validSession,
 };

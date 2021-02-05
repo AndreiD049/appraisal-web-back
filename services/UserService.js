@@ -114,6 +114,21 @@ const UserService = {
     return result;
   },
 
+  // Get all the users from that team
+  async getTeamUsers(user) {
+    const dbUser = await this.getUser(user.id);
+    if (!dbUser.role || !dbUser.organization) {
+      return [];
+    }
+    return UserModel.find({
+      teams: { $in: dbUser.teams },
+      organizations: dbUser.organization._id,
+    }).populate({
+      path: 'teams organizations organization role',
+      select: 'name',
+    });
+  },
+
   async getUserTeamMembersSameLevel(user) {
     const dbUser = await this.getUser(user.id);
     if (!dbUser.role || !dbUser.organization) {

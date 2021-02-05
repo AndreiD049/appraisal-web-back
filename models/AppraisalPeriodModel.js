@@ -42,6 +42,11 @@ const AppraisalPeriodSchema = new mongoose.Schema(
       type: mongoose.Types.ObjectId,
       required: false,
     },
+    locked: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
   },
   {
     timestamps: {

@@ -1,9 +1,12 @@
+const AsyncLock = require('async-lock');
 const { AppraisalPeriodModel, UserPeriodModel } = require('../models/AppraisalPeriodModel');
 const { AppraisalItemModel } = require('../models/AppraisalItemModel');
 const UserService = require('./UserService');
 const { UserModel } = require('../models/UserModel');
-const { and, or, not, validate, perform } = require('./validators');
+const { If, and, or, not, validate, perform } = require('./validators');
 const { securities } = require('../config/constants');
+
+const lock = new AsyncLock();
 
 const AP = securities.APPRAISAL_PERIODS;
 const AD = securities.APPRAISAL_DETAILS;
@@ -193,15 +196,17 @@ const AppraisalService = {
   },
 
   async getItemById(itemId) {
-    const item = await AppraisalItemModel.findById(itemId)
-      .populate({ path: 'createdUser modifiedUser', select: 'username' });
+    const item = await AppraisalItemModel.findById(itemId).populate({
+      path: 'createdUser modifiedUser',
+      select: 'username',
+    });
     return item;
   },
 
   /**
    * Create a copy of the item and return it's document
    */
-  async copyItem(oldItem, session = null) {
+  async copyItem(oldItem) {
     const copy = new AppraisalItemModel(oldItem.toJSON());
     // Delete the id's
     delete copy._id;
@@ -229,16 +234,19 @@ const AppraisalService = {
       ]),
       validate.periodExists(period),
       validate.itemSameUser(item, userDb),
-      or([
-        and([
-          not(validate.periodStatus(period, 'Finished')),
-          validate.userAuthorized(userDb, AD.code, AD.grants.create),
-        ]),
-        and([
-          validate.periodStatus(period, 'Finished'),
-          validate.userAuthorized(userDb, AD.code, AD.grants.createFinished),
-        ]),
-      ], 'User is not authorized to add appraisal items.'),
+      or(
+        [
+          and([
+            not(validate.periodStatus(period, 'Finished')),
+            validate.userAuthorized(userDb, AD.code, AD.grants.create),
+          ]),
+          and([
+            validate.periodStatus(period, 'Finished'),
+            validate.userAuthorized(userDb, AD.code, AD.grants.createFinished),
+          ]),
+        ],
+        'User is not authorized to add appraisal items.',
+      ),
     ]);
     await perform(validations);
 
@@ -252,9 +260,9 @@ const AppraisalService = {
       createdUser: user.id,
     }).save();
 
-    if (period.status === 'Finished' && document.status !== 'Finished') { 
-      return this.finishItem(document)
-    };
+    if (period.status === 'Finished' && document.status !== 'Finished') {
+      return this.finishItemWithTransaction(document);
+    }
     return AppraisalItemModel.populate(document, { path: 'createdUser', select: 'username' });
   },
 
@@ -288,16 +296,19 @@ const AppraisalService = {
       validate.periodExists(period),
       not(validate.itemSameUser(item, userFrom), 'Cannot add item to your own user.'),
       validate.userInTeam(userFrom, userTo),
-      or([
-        and([
-          not(validate.periodStatus(period, 'Finished')),
-          validate.userAuthorized(userFrom, ADO.code, ADO.grants.create),
-        ]),
-        and([
-          validate.periodStatus(period, 'Finished'),
-          validate.userAuthorized(userFrom, ADO.code, ADO.grants.createFinished),
-        ]),
-      ], 'Access denied. Cannot add items to other users'),
+      or(
+        [
+          and([
+            not(validate.periodStatus(period, 'Finished')),
+            validate.userAuthorized(userFrom, ADO.code, ADO.grants.create),
+          ]),
+          and([
+            validate.periodStatus(period, 'Finished'),
+            validate.userAuthorized(userFrom, ADO.code, ADO.grants.createFinished),
+          ]),
+        ],
+        'Access denied. Cannot add items to other users',
+      ),
     ]);
     await perform(validations);
 
@@ -310,7 +321,7 @@ const AppraisalService = {
       user: userTo.id,
       createdUser: user.id,
     }).save();
-    if (period.status === 'Finished') return this.finishItem(document);
+    if (period.status === 'Finished') return this.finishItemWithTransaction(document);
     return document;
   },
 
@@ -342,44 +353,42 @@ const AppraisalService = {
         ),
       ]),
       validate.itemSameUser(item, user),
-      or([
-        and([
-          not(validate.itemStatus(item, 'Finished')),
-          validate.userAuthorized(userDb, AD.code, AD.grants.update),
-        ]),
-        and([
-          validate.itemStatus(item, 'Finished'),
-          validate.userAuthorized(userDb, AD.code, AD.grants.updateFinished),
-        ]),
-      ], 'Access denied. Cannot update item.'),
+      or(
+        [
+          and([
+            not(validate.itemStatus(item, 'Finished')),
+            validate.userAuthorized(userDb, AD.code, AD.grants.update),
+          ]),
+          and([
+            validate.itemStatus(item, 'Finished'),
+            validate.userAuthorized(userDb, AD.code, AD.grants.updateFinished),
+          ]),
+        ],
+        'Access denied. Cannot update item.',
+      ),
     ]);
     await perform(validations);
 
     const { status } = item;
 
     const updateObject = {
-      ...update,
+      content: update.content,
+      type: update.type,
+      complexity: update.complexity,
       modifiedUser: userDb.id,
     };
     // userCreated will not change
     delete updateObject.createdUser;
     // if status is finished, we want first to update the related items, if any
     if (status === 'Finished') {
-      const updateRelated = updateObject;
-      delete updateRelated.periodId;
-      delete updateRelated.createdUser;
-      delete updateRelated.status;
-
       const session = await AppraisalItemModel.startSession();
       await session.withTransaction(async () => {
-        this.updateRelated(item, updateRelated)
+        this.updateRelated(item, updateObject);
       });
     }
-    const updated = await AppraisalItemModel.findByIdAndUpdate(
-      itemId,
-      updateObject,
-      { new: true },
-    ).populate({
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, updateObject, {
+      new: true,
+    }).populate({
       path: 'createdUser modifiedUser',
       select: 'username',
     });
@@ -427,31 +436,26 @@ const AppraisalService = {
     const { status } = item;
 
     const updateObject = {
-      ...update,
+      content: update.content,
+      type: update.type,
+      complexity: update.complexity,
       modifiedUser: userFrom.id,
     };
     // userCreated will not change
     delete updateObject.createdUser;
     // if status is finished, we want first to update the related items, if any
     if (status === 'Finished') {
-      const updateRelated = updateObject;
-      delete updateRelated.periodId;
-      delete updateRelated.createdUser;
-      delete updateRelated.status;
-
       const session = await AppraisalItemModel.startSession();
       await session.withTransaction(async () => {
-        this.updateRelated(item, updateRelated)
+        this.updateRelated(item, updateObject);
       });
     }
-    const updated = await AppraisalItemModel.findByIdAndUpdate(
-      itemId,
-      updateObject,
-      { new: true },
-    ).populate({
-        path: 'createdUser modifiedUser',
-        select: 'username',
-      });
+    const updated = await AppraisalItemModel.findByIdAndUpdate(itemId, updateObject, {
+      new: true,
+    }).populate({
+      path: 'createdUser modifiedUser',
+      select: 'username',
+    });
     return updated;
   },
 
@@ -462,10 +466,10 @@ const AppraisalService = {
    */
   async deleteItem(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const userDb = await UserService.getUser(user.id);
+    const userDb = await UserService.getUser(user?.id);
     const period = await AppraisalService.getPeriodById(item?.periodId);
 
-    const prevalidation = validate.itemExists(item);
+    const prevalidation = and([validate.itemExists(item), validate.userExists(userDb)]);
     await perform(prevalidation);
 
     const validations = and([
@@ -475,16 +479,12 @@ const AppraisalService = {
         validate.periodStatus(period, 'Finished'),
         not(validate.periodLocked(period, userDb.id), 'Cannot delete items in a locked period'),
       ]),
-      or([
-        and([
-          not(validate.itemStatus(item, 'Finished')),
-          validate.userAuthorized(userDb, AD.code, AD.grants.delete),
-        ]),
-        and([
-          validate.itemStatus(item, 'Finished'),
-          validate.userAuthorized(userDb, AD.code, AD.grants.deleteFinished),
-        ]),
-      ]),
+      validate.itemSameUser(item, userDb),
+      If(
+        validate.itemStatus(item, 'Finished'),
+        validate.userAuthorized(userDb, AD.code, AD.grants.deleteFinished),
+        validate.userAuthorized(userDb, AD.code, AD.grants.delete),
+      ),
     ]);
     await perform(validations);
 
@@ -497,26 +497,25 @@ const AppraisalService = {
   // Delete item of another user
   async deleteItemOfMember(itemId, user) {
     const item = await AppraisalItemModel.findById(itemId);
-    const userFrom = await UserService.getUser(user.id);
-    const userTo = await UserService.getUser(item.user);
+    const userFrom = await UserService.getUser(user?.id);
+    const userTo = await UserService.getUser(item?.user);
 
-    const prevalidation = validate.itemExists(item);
+    const prevalidation = and([
+      validate.itemExists(item),
+      validate.userExists(userFrom),
+      validate.userExists(userTo),
+    ]);
     await perform(prevalidation);
 
     const validations = and([
       not(validate.isTruthy(item.relatedItemId), "Item has related entries. Can't delete"),
       not(validate.itemSameUser(item, userFrom)),
       validate.userInTeam(userFrom, userTo),
-      or([
-        and([
-          not(validate.itemStatus(item, 'Finished')),
-          validate.userAuthorized(userFrom, ADO.code, ADO.grants.delete),
-        ]),
-        and([
-          validate.itemStatus(item, 'Finished'),
-          validate.userAuthorized(userFrom, ADO.code, ADO.grants.deleteFinished),
-        ]),
-      ]),
+      If(
+        validate.itemStatus(item, 'Finished'),
+        validate.userAuthorized(userFrom, ADO.code, ADO.grants.deleteFinished),
+        validate.userAuthorized(userFrom, ADO.code, ADO.grants.delete),
+      ),
     ]);
     await perform(validations);
 
@@ -535,23 +534,36 @@ const AppraisalService = {
         await this.deleteRelated(element, session);
       });
     }
-    await AppraisalItemModel.deleteMany({
-      relatedItemId: item.id,
-    }, { session });
+    await AppraisalItemModel.deleteMany(
+      {
+        relatedItemId: item.id,
+      },
+      { session },
+    );
   },
 
   async updateRelated(item, update, session = null) {
+    // Only below properties can be actually updated
+    const updateObject = {
+      content: update.content,
+      type: update.type,
+      complexity: update.complexity,
+    };
     const related = await AppraisalItemModel.find({
       relatedItemId: item.id,
-    });
+    }).session(session);
     if (related.length > 0) {
       related.forEach(async (element) => {
-        await this.updateRelated(element, update, session);
+        await this.updateRelated(element, updateObject, session);
       });
     }
-    await AppraisalItemModel.updateMany({
-      relatedItemId: item.id,
-    }, update, { session });
+    await AppraisalItemModel.updateMany(
+      {
+        relatedItemId: item.id,
+      },
+      updateObject,
+      { session },
+    );
   },
 
   /**
@@ -566,12 +578,17 @@ const AppraisalService = {
    *    After, set the original item to Finished
    * 3. If item is already finished, throw an error and abort transaction
    */
-  async finishItem(item, session = null) {
-    const itemDb = await AppraisalItemModel.findById(item.id).session(session);
+  async finishItem(item, session) {
+    // Validate session validity, it can be either null or a ClientSession
+    const sessionValidation = validate.validSession(session);
+
+    await perform(sessionValidation);
+    const itemDb = await AppraisalItemModel.findById(item?.id).session(session);
 
     const validations = and([
+      validate.itemExists(itemDb),
       not(validate.itemStatus(itemDb, 'Finished')),
-      validate.isTruthy(itemDb.periodId, "Item has no period. Can't finish."),
+      validate.isTruthy(itemDb?.periodId, "Item has no period. Can't finish."),
     ]);
     await perform(validations);
 
@@ -580,11 +597,20 @@ const AppraisalService = {
       copy.status = 'Active';
       copy.periodId = null;
       copy.relatedItemId = itemDb.id;
-      copy.save({ session });
+      await copy.save({ session });
     }
 
     itemDb.status = 'Finished';
     return itemDb.save({ session });
+  },
+
+  async finishItemWithTransaction(item) {
+    const session = await AppraisalPeriodModel.startSession();
+    let result = null;
+    await session.withTransaction(async () => {
+      result = await this.finishItem(item, session);
+    });
+    return result;
   },
 
   async unFinishItem(item, session = null) {
@@ -608,23 +634,88 @@ const AppraisalService = {
   },
 
   async finishPeriod(periodId, user) {
-    // Create a session to use in transaction
-    const session = await AppraisalPeriodModel.startSession();
-    const transaction = await session.withTransaction(async () => {
-        const period = await AppraisalPeriodModel.findById(periodId).session(session);
-        period.status = 'Finished';
-        // Find all items related to this period
-        const items = await this.getItemsByPeriodId(period.id);
-        const modifications = items.map((i) => this.finishItem(i, session));
-        const results = await Promise.allSettled(modifications);
-        const errors = results.filter(r => r.status === 'rejected');
-        if (errors.length > 0) {
-          throw new Error(`Transaction rejected.\n${errors.map(e => e.reason).join('\n')}`);
+    // Make sure period is finished concurrently
+    return lock
+      .acquire(periodId, async () => {
+        const pageSize = 10000;
+        // Create a session to use in transaction
+        let period = await AppraisalPeriodModel.findById(periodId);
+
+        if (period.locked) {
+          throw new Error('Period is being updated');
         }
+
+        // Claim the period locked for operations and save
+        period.locked = true;
+        period = await period.save();
+
+        // check if there is at least one finished item in this period, if so, it's probably corrupted
+        const finishedItem = await AppraisalItemModel.findOne({
+          periodId: period.id,
+          status: {
+            $ne: 'Active',
+          },
+        });
+
+        const validations = and([
+          validate.userExists(user),
+          validate.periodExists(period),
+          validate.periodStatus(period, 'Active'),
+          validate.userAuthorized(user, AP.code, AP.grants.finish),
+          not(
+            validate.isTruthy(finishedItem, 'Finished item found in this period. Cannot continue.'),
+          ),
+        ]);
+        await perform(validations);
+
+        // Find all items related to this period that should have an Active duplicate
+        const items = await AppraisalItemModel.find({
+          periodId: period.id,
+          type: { $in: ['Planned', 'Training_Planned'] },
+          status: 'Active',
+        }).lean();
+
+        const modifiedItems = items.map((item) => {
+          const copy = { ...item };
+          copy.relatedItemId = copy._id;
+          delete copy._id;
+          delete copy.id;
+          copy.originalPeriodId = copy.periodId;
+          copy.periodId = null;
+          return copy;
+        });
+
+        const pages = Math.ceil(modifiedItems.length / pageSize);
+
+        for (let i = 0; i < pages; i += 1) {
+          // eslint-disable-next-line no-await-in-loop
+          await AppraisalItemModel.insertMany(
+            modifiedItems.slice(i * pageSize, i * pageSize + pageSize),
+          );
+        }
+
+        await AppraisalItemModel.updateMany(
+          {
+            periodId: period.id,
+            status: 'Active',
+          },
+          {
+            $set: {
+              status: 'Finished',
+            },
+          },
+        );
+
+        period.status = 'Finished';
+        period.locked = false;
         await period.save();
-    });
-    // return true or flase whether the transaction was successfull
-    return transaction ? transaction.result.ok === 1 : false;
+        // return true or flase whether the transaction was successfull
+        // return transaction ? transaction.result.ok === 1 : false;
+        return true;
+      })
+      .catch((err) => {
+        throw err;
+      });
   },
 };
 

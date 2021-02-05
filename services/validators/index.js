@@ -5,6 +5,34 @@ const GeneralValidators = require('./GeneralValidators');
 const ReportingValidators = require('./ReportingValidators');
 
 /**
+ * @param {function(): {result: boolean, message: string}} condition
+ * @param {async function()} validationsTrue
+ * @param {async function()} validationsFalse
+ */
+const If = (condition, validationsTrue, validationsFalse) => async () => {
+  try {
+    if (typeof condition === 'boolean') {
+      return condition ? validationsTrue() : validationsFalse();
+    }
+    if (condition instanceof Function) {
+      const conditionRes = await condition();
+      if (conditionRes.result === true) {
+        return validationsTrue();
+      }
+      if (conditionRes.result === false) {
+        return validationsFalse();
+      }
+    }
+    throw new Error('Invalid condition supplied');
+  } catch (err) {
+    return {
+      result: false,
+      message: err.message,
+    };
+  }
+};
+
+/**
  * @param {Array.<function(): {result: boolean, message: string}>} validations
  * @return {function(): {result: boolean, message: string}} validations
  */
@@ -18,8 +46,7 @@ const and = (validations, message = null) => async () => {
       return results[0];
     }
     const result = results.find((v) => v.result === false);
-    if (message)
-      result.message = message;
+    if (message) result.message = message;
     return result;
   } catch (err) {
     return {
@@ -144,7 +171,6 @@ const notSync = (validation, message = null) => () => {
     val.message = message || val.message;
     return val;
   } catch (err) {
-    console.error(err);
     return {
       result: false,
       message: message || 'error',
@@ -171,6 +197,7 @@ const performSync = (validation, throwEx = true) => {
 };
 
 module.exports = {
+  If,
   and,
   andSync,
   or,

@@ -12,7 +12,7 @@ const { ReportsModel } = require('../../models/Reporting');
 const UserService = require('../UserService');
 const { validate, perform, and } = require('../validators');
 const { REPORTS } = require('../../config/constants').securities;
-const { AppraisalItemsView } = require('../../models/AppraisalItemModel');
+const { AppraisalItemsView, AppraisalItemModel } = require('../../models/AppraisalItemModel');
 const { ObjectId } = require('mongoose').Types;
 const { isValidObjectId } = require('mongoose');
 
@@ -56,109 +56,44 @@ const ReportingService = {
     // Return only team members
     const teamMembers = await UserService.getUserTeamMembers(reqUser);
     const userDb = await UserService.getUser(reqUser.id);
-    const matchStep = { $match: {
-      user: { $in: teamMembers.map((m) => m.id).concat(userDb._id) }
-    }};
+    const filterMatch = {
+      user: { $in: teamMembers.map((m) => m.id).concat(userDb._id) },
+    };
     if (periods.length)
-      matchStep.$match.periodId = { 
-        $in: periods
-          .filter((period) => isValidObjectId(period))
-            .map((period) => (new ObjectId(period))) 
-        };
+      filterMatch.periodId = {
+        $in: periods.filter((period) => isValidObjectId(period)),
+      };
     if (dateFrom) {
-      matchStep.$match.createdDate = {};
-      matchStep.$match.createdDate.$gt = dateFrom;
+      filterMatch.createdDate = {};
+      filterMatch.createdDate.$gt = dateFrom;
     }
     if (dateTo) {
-      matchStep.$match.createdDate = matchStep.$match.createdDate || {};
-      matchStep.$match.createdDate.$lt = dateTo;
+      filterMatch.createdDate = filterMatch.$match.createdDate || {};
+      filterMatch.createdDate.$lt = dateTo;
     }
-    const data = await AppraisalItemsView.aggregate([
-      matchStep,
-      {
-        $lookup: {
-          from: 'appraisalperiods',
-          localField: 'periodId',
-          foreignField: '_id',
-          as: 'periodDetails',
+    const data = await AppraisalItemModel.find(filterMatch)
+      .populate({
+        path: 'user',
+        select: 'username',
+        populate: {
+          path: 'teams role',
+          select: 'name',
         },
-      },
-      {
-        $addFields: {
-          periodDetails: {
-            $first: '$periodDetails',
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'user',
-          foreignField: '_id',
-          as: 'userDetails',
-        },
-      },
-      {
-        $addFields: {
-          userDetails: {
-            $first: '$userDetails',
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'createdUser',
-          foreignField: '_id',
-          as: 'createdUserDetails',
-        },
-      },
-      {
-        $addFields: {
-          createdUserDetails: {
-            $first: '$createdUserDetails',
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'users',
-          localField: 'modifiedUser',
-          foreignField: '_id',
-          as: 'modifiedUserDetails',
-        },
-      },
-      {
-        $addFields: {
-          modifiedUserDetails: {
-            $first: '$modifiedUserDetails',
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'roles',
-          localField: 'userDetails.role',
-          foreignField: '_id',
-          as: 'userDetails.role',
-        },
-      },
-      {
-        $addFields: {
-          'userDetails.role': {
-            $first: '$userDetails.role',
-          },
-        },
-      },
-      {
-        $lookup: {
-          from: 'teams',
-          localField: 'userDetails.teams',
-          foreignField: '_id',
-          as: 'userTeams',
-        },
-      },
-    ]);
+      })
+      .populate({ path: 'createdUser modifiedUser', select: 'username' })
+      .populate({ path: 'periodId', select: 'name' })
+      .select({
+        type: 1,
+        status: 1,
+        content: 1,
+        periodId: 1,
+        user: 1,
+        createdUser: 1,
+        createdDate: 1,
+        modifiedUser: 1,
+        modifiedDate: 1,
+      })
+      .lean();
     return data || [];
   },
 

@@ -32,6 +32,21 @@ userRouter.get(
 );
 
 /**
+ * Get all users that have at least one team intersecting with mine
+ */
+userRouter.get(
+  '/team-users',
+  async (req, res, next) => {
+    try {
+      const result = await UserService.getTeamUsers(req.user);
+      res.json(result);
+    } catch (err) {
+      next(err)
+    }
+  }
+)
+
+/**
  * I want to be able to update users via PUT call
  */
 userRouter.put('/:id', async (req, res, next) => {

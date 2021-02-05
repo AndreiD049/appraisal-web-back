@@ -82,6 +82,36 @@ const constants = {
         delete: 'delete',
       },
     },
+    TASK: {
+      code: 'TASK',
+      description: 'Access to read, update, create or delete tasks',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
+    TASK_RULE: {
+      code: 'TASK-RULE',
+      description: 'Access to read, update, create or delete task rules',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
+    TASK_FLOW: {
+      code: 'TASK-FLOW',
+      description: 'Access to read, update, create or delete task flows',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
   },
 };
 

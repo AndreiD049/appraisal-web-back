@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@types/jest": "^26.0.18",
+    "async-lock": "^1.2.8",
     "body-parser": "^1.19.0",
     "carbone": "git+https://github.com/AndreiD049/carbone.git",
     "connect-mongo": "^3.2.0",

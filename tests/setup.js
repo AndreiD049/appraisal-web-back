@@ -6,7 +6,7 @@ const { create } = require('./data');
 module.exports = async () => {
   await jestMongoSetup();
   const replSet = new MongoMemoryReplSet({
-    replSet: { 
+    replSet: {
       storageEngine: 'wiredTiger',
       name: 'rs0',
     },
