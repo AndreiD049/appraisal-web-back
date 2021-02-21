@@ -9,8 +9,8 @@ const teamRouter = require('../api/routes/team');
 const securityRouter = require('../api/routes/security');
 const settingsRouter = require('../api/routes/settings');
 const reportingRouter = require('../api/routes/reporting');
-// const taskRouter = require('../api/routes/tasks');
 const { taskAPI, taskFlowAPI, taskRuleAPI } = require('../components/tasks');
+const { connectionRouter } = require('../components/ConnectionBroker');
 const { auditsRouter } = require('../api/routes/audits');
 
 const init = ({ app }) => {
@@ -41,6 +41,7 @@ const init = ({ app }) => {
   app.use('/api/tasks', taskAPI);
   app.use('/api/task-rules', taskRuleAPI);
   app.use('/api/task-flows', taskFlowAPI);
+  app.use('/api/connection', connectionRouter);
 
   return app;
 };

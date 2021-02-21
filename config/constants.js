@@ -1,4 +1,11 @@
 const constants = {
+  connections: {
+    actions: {
+      INSERT: 'INSERT',
+      UPDATE: 'UPDATE',
+      DELETE: 'DELETE',
+    },
+  },
   tasks: {
     status: {
       New: 'New',

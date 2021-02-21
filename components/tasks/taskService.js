@@ -2,9 +2,9 @@ const moment = require('moment');
 const constants = require('../../config/constants');
 const UserService = require('../../services/UserService');
 const Task = require('./task');
-const { updateTask } = require('./taskDAL');
 const taskDAL = require('./taskDAL');
-const { and, or, validate, perform, If } = require('../../services/validators');
+const { and, validate, perform, If } = require('../../services/validators');
+const ConnectionBroker = require('../ConnectionBroker/ConnectionBroker');
 
 const { types, DayTypes } = constants.tasks;
 const {TASK} = constants.securities;
@@ -54,6 +54,11 @@ const TaskService = {
 
   async updateTask(id, data, user) {
     const result = await taskDAL.updateTask(id, data);
+    ConnectionBroker.publish(`dailytasks.${user.id}`, {
+      action: constants.connections.actions.UPDATE,
+      initiator: user.id,
+      data: result,
+    });
     return result;
   },
 
@@ -112,7 +117,7 @@ const TaskService = {
         updated.unpaused = unpaused.result;
       }
     }
-    updated.result =  await updateTask(id, update, user);
+    updated.result =  await this.updateTask(id, update, user);
     return updated;
   },
 
