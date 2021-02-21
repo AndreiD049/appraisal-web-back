@@ -1,4 +1,33 @@
 const constants = {
+  tasks: {
+    status: {
+      New: 'New',
+      InProgress: 'InProgress',
+      Paused: 'Paused',
+      Finished: 'Finished',
+      Cancelled: 'Cancelled',
+    },
+    types: {
+      Daily: 'Daily',
+      Weekly: 'Weekly',
+      Monthly: 'Monthly',
+    },
+    DayTypes: {
+      Workday: 'Work',
+      Calendar: 'Calendar',
+    },
+    MonthlyOnType: {
+      Day: 'Day',
+      Workday: 'Workday',
+      Monday: 'Monday',
+      Tuesday: 'Tuesday',
+      Wednesday: 'Wednesday',
+      Thursday: 'Thursday',
+      Friday: 'Friday',
+      Saturday: 'Saturday',
+      Sunday: 'Sunday',
+    },
+  },
   securities: {
     REPORTS: {
       code: 'REPORTS',

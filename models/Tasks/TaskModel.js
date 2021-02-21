@@ -1,9 +1,8 @@
 const mongoose = require('mongoose');
 const { toJSON } = require('../dbutils');
+const validStatuses = Object.values(require('../../config/constants').tasks.status);
 
 const { ObjectId } = mongoose.Types;
-
-const validStatuses = ['New', 'InProgress', 'Paused', 'Finished', 'Cancelled'];
 
 const TaskSchema = new mongoose.Schema(
   {
@@ -53,6 +52,11 @@ const TaskSchema = new mongoose.Schema(
       required: false,
       default: null,
     },
+    lastStartDate: {
+      type: Date,
+      required: false,
+      default: null,
+    },
     actualDuration: {
       type: Number, // Number of minutes
       required: false,
@@ -63,6 +67,14 @@ const TaskSchema = new mongoose.Schema(
       required: false,
       default: null,
     },
+    userStarted: {
+      type: ObjectId,
+      ref: 'User',
+    },
+    userFinished: {
+      type: ObjectId,
+      ref: 'User',
+    },
     assignedTo: [
       {
         type: ObjectId,
@@ -70,11 +82,17 @@ const TaskSchema = new mongoose.Schema(
         ref: 'User',
       },
     ],
-    relatedFlow: {
-      type: ObjectId,
-      required: false,
-      default: null,
-      ref: 'TaskFlow',
+    relatedFlows: [
+      {
+        type: ObjectId,
+        required: false,
+        default: null,
+        ref: 'TaskFlow',
+      }
+    ],
+    isBackgroundTask: {
+      type: Boolean,
+      required: true,
     },
     organizationId: {
       type: mongoose.ObjectId,
@@ -99,6 +117,8 @@ const TaskSchema = new mongoose.Schema(
     },
   },
 );
+
+TaskSchema.index({ title: 1, ruleId: 1, expectedStartDate: 1, assignedTo: 1 }, { unique: true });
 
 TaskSchema.set('toJSON', {
   transform: toJSON,

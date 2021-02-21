@@ -1,23 +1,14 @@
 const mongoose = require('mongoose');
 const { toJSON } = require('../dbutils');
+const { types, DayTypes, MonthlyOnType } = require('../../config/constants').tasks;
 
 const { ObjectId } = mongoose.Types;
 
-const validTypes = ['Daily', 'Weekly', 'Monthly'];
+const validTypes = Object.values(types);
 
-const validDayType = ['Work', 'Callendar'];
+const validDayType = Object.values(DayTypes);
 
-const validMonthlyOnType = [
-  'Day',
-  'WorkDay',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-  'Sunday',
-];
+const validMonthlyOnType = Object.values(MonthlyOnType);
 
 const TaskRuleSchema = new mongoose.Schema(
   {
@@ -27,7 +18,6 @@ const TaskRuleSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      required: true,
     },
     type: {
       type: String,
@@ -77,6 +67,18 @@ const TaskRuleSchema = new mongoose.Schema(
     taskStartTime: {
       type: Date,
       required: true,
+    },
+    validFrom: {
+      type: Date,
+      required: true,
+    },
+    validTo: {
+      type: Date,
+      default: null,
+    },
+    generatedUntil: {
+      type: Date,
+      default: null,
     },
     taskDuration: {
       type: Number,

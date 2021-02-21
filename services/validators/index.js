@@ -9,18 +9,26 @@ const ReportingValidators = require('./ReportingValidators');
  * @param {async function()} validationsTrue
  * @param {async function()} validationsFalse
  */
-const If = (condition, validationsTrue, validationsFalse) => async () => {
+const If = (condition, validationsTrue, validationsFalse = null) => async () => {
   try {
     if (typeof condition === 'boolean') {
-      return condition ? validationsTrue() : validationsFalse();
+      if (condition) {
+        return validationsTrue();
+      } if (!validationsFalse) {
+        return { result: true }
+      } 
+      return validationsFalse();
     }
     if (condition instanceof Function) {
       const conditionRes = await condition();
       if (conditionRes.result === true) {
         return validationsTrue();
       }
-      if (conditionRes.result === false) {
+      if (conditionRes.result === false && validationsFalse) {
         return validationsFalse();
+      }
+      if (!validationsFalse) {
+        return { result: true }
       }
     }
     throw new Error('Invalid condition supplied');

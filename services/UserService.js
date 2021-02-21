@@ -129,46 +129,6 @@ const UserService = {
     });
   },
 
-  async getUserTeamMembersSameLevel(user) {
-    const dbUser = await this.getUser(user.id);
-    if (!dbUser.role || !dbUser.organization) {
-      return [];
-    }
-    const members = await UserModel.aggregate([
-      {
-        $lookup: {
-          from: 'roles',
-          localField: 'role',
-          foreignField: '_id',
-          as: 'roleObj',
-        },
-      },
-      {
-        $match: {
-          teams: { $in: dbUser.teams },
-          organizations: dbUser.organization._id,
-          'roleObj.securityLevel': { $eq: dbUser.role.securityLevel },
-        },
-      },
-      {
-        $addFields: {
-          id: '$_id',
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          roleObj: 0,
-        },
-      },
-    ]);
-    const result = await UserModel.populate(members, {
-      path: 'teams organizations organization role',
-      select: 'name',
-    });
-    return result;
-  },
-
   /**
    * I want to be able to get all the users without any organization
    */

@@ -1,7 +1,8 @@
 const taskRuleRouter = require('express').Router();
-const { TaskRuleService } = require('../../../services/Tasks');
+const TaskService = require('../taskService');
 const { AuthorizeReq } = require('../../../services/AuthorizationService').AuthorizationService;
 const { TASK_RULE } = require('../../../config/constants').securities;
+const { taskRuleSchema } = require('../taskUtils');
 
 // before each requestm check if there is a user
 taskRuleRouter.use(async (req, res, next) => {
@@ -11,8 +12,7 @@ taskRuleRouter.use(async (req, res, next) => {
 
 taskRuleRouter.get('/', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.read), async (req, res, next) => {
   try {
-    const filter = req.params;
-    const result = await TaskRuleService.getTaskRules(filter, req.user);
+    const result = await TaskService.getTaskRules(req.user);
     res.json(result);
   } catch (err) {
     next(err);
@@ -22,7 +22,7 @@ taskRuleRouter.get('/', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.read), asy
 taskRuleRouter.get('/:id', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.read), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await TaskRuleService.getTaskRule(id, req.user);
+    const result = await TaskService.getTaskRule(id, req.user);
     res.json(result);
   } catch (err) {
     next(err);
@@ -31,8 +31,9 @@ taskRuleRouter.get('/:id', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.read), 
 
 taskRuleRouter.post('/', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.create), async (req, res, next) => {
   try {
-    const data = res.body;
-    const result = await TaskRuleService.createTaskRule(data, req.user);
+    await taskRuleSchema.validateAsync(req.body);
+    const data = req.body;
+    const result = await TaskService.createTaskRule(data, req.user);
     res.json(result);
   } catch (err) {
     next(err);
@@ -43,7 +44,7 @@ taskRuleRouter.put('/:id', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.update)
   try {
     const { id } = req.params;
     const data = req.body;
-    const result = await TaskRuleService.updateTaskRule(id, data, req.user);
+    const result = await TaskService.updateTaskRule(id, data, req.user);
     res.json(result);
   } catch (err) {
     next(err);
@@ -53,7 +54,7 @@ taskRuleRouter.put('/:id', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.update)
 taskRuleRouter.delete('/:id', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.delete), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const result = await TaskRuleService.deleteTaskRule(id, req.user);
+    const result = await TaskService.deleteTaskRule(id, req.user);
     res.json(result);
   } catch (err) {
     next(err);
