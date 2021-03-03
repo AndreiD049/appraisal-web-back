@@ -11,14 +11,6 @@ const ReportingValidators = require('./ReportingValidators');
  */
 const If = (condition, validationsTrue, validationsFalse = null) => async () => {
   try {
-    if (typeof condition === 'boolean') {
-      if (condition) {
-        return validationsTrue();
-      } if (!validationsFalse) {
-        return { result: true }
-      } 
-      return validationsFalse();
-    }
     if (condition instanceof Function) {
       const conditionRes = await condition();
       if (conditionRes.result === true) {
@@ -30,6 +22,13 @@ const If = (condition, validationsTrue, validationsFalse = null) => async () => 
       if (!validationsFalse) {
         return { result: true }
       }
+    } else {
+      if (condition) {
+        return validationsTrue();
+      } if (!validationsFalse) {
+        return { result: true }
+      } 
+      return validationsFalse();
     }
     throw new Error('Invalid condition supplied');
   } catch (err) {

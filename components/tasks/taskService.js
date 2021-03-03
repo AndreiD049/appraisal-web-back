@@ -53,7 +53,10 @@ const TaskService = {
   },
 
   async updateTask(id, data, user) {
-    const result = await taskDAL.updateTask(id, data);
+    const result = await taskDAL.updateTask(id, {
+      ...data,
+      modifiedUser: user.id,
+    });
     ConnectionBroker.publish(`dailytasks.${user.id}`, {
       action: constants.connections.actions.UPDATE,
       initiator: user.id,
@@ -132,6 +135,10 @@ const TaskService = {
     return result;
   },
 
+  async getTaskRule(id, user) {
+    return taskDAL.getTaskRule(id);
+  },
+
   async createTaskRule(data, user) {
     const rule = await taskDAL.createTaskRule({
       ...data,
@@ -144,7 +151,54 @@ const TaskService = {
   },
 
   async updateTaskRule(ruleId, data, user) {
-    return taskDAL.updateTaskRule(ruleId, data);
+    let rule = await this.getTaskRule(ruleId, user);
+    const validations = and([
+      validate.userAuthorized(
+        user,
+        constants.securities.TASK_RULE.code,
+        constants.securities.TASK_RULE.grants.update,
+      ),
+      If(data.validFrom, validate.isTruthy(!Number.isNaN(+new Date(data.validFrom)), 'Valid from should be a valid date')),
+      If(data.validTo, validate.isTruthy(!Number.isNaN(+new Date(data.validTo)), 'Valid from should be a valid date')),
+    ]);
+    await perform(validations);
+    // if i update either validFrom or validTo
+    // 1st phase, generate more tasks or delete the unnecessary ones
+    if (data.validFrom || data.validTo) {
+      if (data.validFrom && rule.validFrom > new Date(data.validFrom)) {
+        await taskDAL.createTasks(await this.generateTasksBetween(rule, data.validFrom, rule.validFrom, user))
+      }
+      // if i insert valid from, delete all rules that are unmodified before that date
+      if (data.validFrom && rule.validFrom < new Date(data.validFrom)) {
+        await taskDAL.deleteTasksOfRule(rule.id, {}, null, data.validFrom)
+      }
+      if (data.validTo) {
+        await taskDAL.deleteTasksOfRule(rule.id, {}, data.validTo, null);
+        // if rule was generated beyond new validTo, update it to the validTo date
+        // Because we just deleted all the tasks from it onwards
+        if (new Date(rule.generatedUntil) > new Date(data.validTo)) {
+          rule = await taskDAL.updateTaskRule(rule.id, { generatedUntil: data.validTo });
+        }
+      }
+    }
+    // 2nd phase, if i update the title, description or background
+    // i just update all unmodified tasks
+    if (data.title || data.description || data.isBackgroundTask) {
+      const update = {};
+      if (data.title) update.title = data.title;
+      if (data.description) update.description = data.description;
+      if (data.isBackgroundTask) update.isBackgroundTask = data.isBackgroundTask;
+      await taskDAL.updateTasksOfRule(rule.id, {}, update);
+    }
+    // phase 3, if i update expectedStartTime or duration
+    if (data.taskStartTime || data.taskDuration) {
+      await taskDAL.deleteTasksOfRule(rule.id, {}, moment().hours(0).minutes(0).seconds(0).toDate());
+      rule = await taskDAL.updateTaskRule(rule.id, { generatedUntil: new Date() });
+    }
+    return taskDAL.updateTaskRule(ruleId, {
+      ...data,
+      modifiedUser: user.id,
+    });
   },
 
   /**
@@ -153,27 +207,28 @@ const TaskService = {
    * @param {TaskRule} rule 
    * @param {Date} dateTo 
    */
-  async generateTasksUntil(rule, dateTo, assignedTo, user) {
+  async generateTasksBetween(rule, dateFrom, dateTo, user) {
     // Define date from - rule's generatedUntil date
     // iterate from date from to date to (exclusive)
     // for each date, validate it
     // if valid, generate a task
-    const dateFrom = moment(rule.generatedUntil ?? rule.validFrom);
-    const maxDate = moment.min(dateTo, moment().add(1, 'y'));
-    const dates = [];
-    for (let i = dateFrom; i.isBefore(maxDate); i.add(1, 'd')) {
-      dates.push(i.toDate());
-    }
-    const calls = dates.map(async (date) => {
-      const valid = await this.validateRule(rule, date);
-      if (valid) {
-        return new Task({ rule, date, assignedTo: [assignedTo], user });
+    if (rule.users.length) {
+      const dates = [];
+      for (let i = moment(dateFrom); i.isBefore(dateTo); i.add(1, 'd')) {
+        dates.push(i.toDate());
       }
-      return null;
-    })
-    // tasks to be created
-    const tasks = (await Promise.all(calls)).filter((t) => t !== null);
-    return tasks;
+      const tasks = dates.map((date) => {
+        const valid = this.validateRule(rule, date);
+        if (valid) {
+          return rule.users.map((u) => new Task({ rule, date, assignedTo: [u], user}))
+        }
+        return null;
+      })
+      // tasks to be created
+      return tasks.flat().filter((t) => t !== null);
+    } 
+    // for flow rules, not implemented yet
+    throw new Error('Not implemented yet');
   },
 
   /**
@@ -199,12 +254,11 @@ const TaskService = {
         if (rule.validTo) {
           maxDate = moment.min(maxDate, moment(rule.validTo), moment().add(1, 'year'));
         }
-        await this.updateTaskRule(rule.id, { generatedUntil: maxDate }, user);
-        await Promise.all(rule.users.map(async (u) =>  {
-          return taskDAL.createTasks(await this.generateTasksUntil(rule, maxDate, u, user));
-        }));
+        await taskDAL.updateTaskRule(rule.id, { generatedUntil: maxDate });
+        const dateFrom = moment(oldDate ?? rule.validFrom);
+        await taskDAL.createTasks(await this.generateTasksBetween(rule, dateFrom, maxDate, user));
       } catch (err) {
-        await this.updateTaskRule(rule.id, { generatedUntil: oldDate }, user);
+        await taskDAL.updateTaskRule(rule.id, { generatedUntil: oldDate });
         throw err;
       }
     }));
@@ -219,7 +273,7 @@ const TaskService = {
    *  - else get the weekday, if it's > 0 (sunday) and < 6 (saturday), then return yes
    *  - else return false
    */
-  async validateRule(rule, date) {
+  validateRule(rule, date) {
     const { type } = rule;
     // if date is not valid, return false
     if (!moment.isDate(date) && !moment.isMoment(date)) return false;

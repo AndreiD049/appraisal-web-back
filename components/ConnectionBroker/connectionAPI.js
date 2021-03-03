@@ -16,13 +16,8 @@ connectionRouter.get('/stream', async (req, res, next) => {
     const sse = new SSE(id, { initialEvent: 'init' });
     sse.init(req, res);
     Broker.connect(req.user.id, id, sse);
-    // const timer = setInterval(() => {
-    //   Broker.info();
-    //   sse.send('Test');
-    // }, 1000);
     req.once('close', () => {
       Broker.disconnect(req.user.id, id)
-      // clearInterval(timer);
     });
   } catch (err) {
     next(err);
@@ -38,7 +33,7 @@ connectionRouter.post('/subscribe', async (req, res, next) => {
     }).validateAsync(req.body);
     const { to, topic, connectionId } = req.body;
     Broker.subscribe(to, topic, connectionId, req.user.id);
-    Broker.info();
+    // Broker.info();
     res.status(200).end();
   } catch (err) {
     next(err);

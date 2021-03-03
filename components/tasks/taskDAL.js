@@ -37,6 +37,13 @@ const taskDAL = {
     return TaskModel.find(query).populate({ path: 'assignedTo', select: 'username' });
   },
 
+  async getUnmodifiedTasks(query = {}) {
+    return TaskModel.find({
+      modifiedUser: null,
+      ...query,
+    }).populate({ path: 'assignedTo', select: 'username' });
+  },
+
   async getTask(id) {
     return TaskModel.findById(id).populate({ path: 'assignedTo', select: 'username' });
   },
@@ -54,7 +61,35 @@ const taskDAL = {
   },
 
   async updateTask(id, data) {
-    return TaskModel.findByIdAndUpdate(id, data, { new: true, }).populate({ path: 'assignedTo', select: 'username' });
+    return TaskModel.findByIdAndUpdate({ _id: id }, data, { new: true, upsert: false }).populate({ path: 'assignedTo', select: 'username' });
+  },
+
+  async updateTasksOfRule(ruleId, query, data) {
+    return TaskModel.updateMany({
+      ruleId,
+      modifiedUser: null,
+      ...query,
+    }, data, { new: true });
+  },
+
+  async deleteTasksOfRule(ruleId, query, dateFrom = null, dateTo = null) {
+    const dateQuery = {
+      expectedStartDate: {
+        $exists: true,
+      }
+    };
+    if (dateFrom !== null) {
+      dateQuery.expectedStartDate.$gte = dateFrom;
+    }
+    if (dateTo !== null) {
+      dateQuery.expectedStartDate.$lt = dateTo;
+    }
+    return TaskModel.deleteMany({
+      ruleId,
+      modifiedUser: null,
+      ...query,
+      ...dateQuery,
+    });
   },
 
   async deleteTask(id) {
@@ -71,9 +106,7 @@ const taskDAL = {
   },
 
   async getTaskRule(id) {
-    return TaskRuleModel.findOne({
-      _id: id,
-    }).populate({ path: 'users', select: 'username' });
+    return TaskRuleModel.findById(id).populate({ path: 'users createdUser', select: 'username' });
   },
 
   async createTaskRule(data) {
@@ -102,7 +135,7 @@ const taskDAL = {
         {
           $or: [
             { validTo: null },
-            { validTo: { $lte: date } }
+            { validTo: { $gt: date } }
           ]
         },
         {

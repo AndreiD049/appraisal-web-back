@@ -26,6 +26,12 @@ const TaskSchema = new mongoose.Schema(
       ref: 'TaskRule',
       index: true,
     },
+    flowId: {
+        type: ObjectId,
+        required: false,
+        default: null,
+        ref: 'TaskFlow',
+    },
     title: {
       type: String,
       required: true,
@@ -81,14 +87,6 @@ const TaskSchema = new mongoose.Schema(
         required: true,
         ref: 'User',
       },
-    ],
-    relatedFlows: [
-      {
-        type: ObjectId,
-        required: false,
-        default: null,
-        ref: 'TaskFlow',
-      }
     ],
     isBackgroundTask: {
       type: Boolean,

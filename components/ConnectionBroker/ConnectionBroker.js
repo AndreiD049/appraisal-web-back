@@ -16,7 +16,6 @@ class ConnectionBroker {
   }
 
   disconnect(userId, connectionId) {
-    console.log('--------DISCONNECT--------');
     const userConnections = this.connections.get(userId);
     if (userConnections) {
       if (userConnections.has(connectionId)) {
