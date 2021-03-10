@@ -11,17 +11,13 @@ const TeamService = {
   },
 
   addTeam: async (name, user) => {
-    try {
-      const newTeam = new TeamModel({
-        name,
-        createdUser: user.id,
-        createdDate: new Date(),
-      });
+    const newTeam = new TeamModel({
+      name,
+      createdUser: user.id,
+      createdDate: new Date(),
+    });
 
-      return await newTeam.save();
-    } catch (err) {
-      throw err;
-    }
+    return newTeam.save();
   },
 };
 

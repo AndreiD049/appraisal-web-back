@@ -1,12 +1,12 @@
 const expressLoader = require('./express');
 const errorHandler = require('./errorHandler');
 const mongooseLoader = require('./mongooseLoader');
-const passportLoader = require('./passportLoader');
+const authLoader = require('./authLoader');
 
 const init = ({ expressApp }) => {
-  passportLoader.init({ app: expressApp });
+  authLoader.init({ app: expressApp });
   expressLoader.init({ app: expressApp });
   errorHandler.init({ app: expressApp });
 };
 
-module.exports = { init, expressLoader, errorHandler, mongooseLoader, passportLoader };
+module.exports = { init, expressLoader, errorHandler, mongooseLoader };

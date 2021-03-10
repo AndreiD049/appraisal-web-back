@@ -4,20 +4,21 @@ const UserService = require('../../services/UserService');
 const Task = require('./task');
 const taskDAL = require('./taskDAL');
 const { and, validate, perform, If } = require('../../services/validators');
-const ConnectionBroker = require('../ConnectionBroker/ConnectionBroker');
+const MessagePublisher = require('../MessagePublisher');
 
 const { types, DayTypes } = constants.tasks;
 const {TASK} = constants.securities;
 
 const TaskService = {
   async getDailyTasks(fromDate, toDate, users, user) {
+    const dbUser = await UserService.getUser(user.id);
     const toDateCalculated = moment(toDate);
     if (fromDate > toDate) {
       toDateCalculated.add(1, 'day');
     }
     const rules = await taskDAL.getUngeneratedRules(users, toDateCalculated.toDate());
-    await this.extendRules(user, rules, moment(toDateCalculated).endOf('month').toDate());
-    return taskDAL.getTasks(users, user, fromDate, toDateCalculated.toDate())
+    await this.extendRules(dbUser, rules, moment(toDateCalculated).endOf('month').toDate());
+    return taskDAL.getTasks(users, dbUser, fromDate, toDateCalculated.toDate())
   },
 
   async getBusyTasks(user) {
@@ -57,8 +58,9 @@ const TaskService = {
       ...data,
       modifiedUser: user.id,
     });
-    ConnectionBroker.publish(`dailytasks.${user.id}`, {
+    MessagePublisher.publish(constants.connections.topics.tasks, {
       action: constants.connections.actions.UPDATE,
+      target: user.id,
       initiator: user.id,
       data: result,
     });
@@ -140,13 +142,14 @@ const TaskService = {
   },
 
   async createTaskRule(data, user) {
+    const dbUser = await UserService.getUser(user.id);
     const rule = await taskDAL.createTaskRule({
       ...data,
       createdUser: user?.id,
-      organizationId: user?.organization?.id,
+      organizationId: dbUser?.organization?.id,
     });
     // Extend the created rule for 1 month initially
-    await this.extendRules(user, [rule], moment(rule.validFrom).add(1, 'month'));
+    await this.extendRules(dbUser, [rule], moment(rule.validFrom).add(1, 'month'));
     return rule;
   },
 
@@ -183,11 +186,11 @@ const TaskService = {
     }
     // 2nd phase, if i update the title, description or background
     // i just update all unmodified tasks
-    if (data.title || data.description || data.isBackgroundTask) {
+    if (data.title || data.description || typeof data.isBackgroundTask === 'boolean') {
       const update = {};
       if (data.title) update.title = data.title;
       if (data.description) update.description = data.description;
-      if (data.isBackgroundTask) update.isBackgroundTask = data.isBackgroundTask;
+      if (typeof data.isBackgroundTask === 'boolean') update.isBackgroundTask = data.isBackgroundTask;
       await taskDAL.updateTasksOfRule(rule.id, {}, update);
     }
     // phase 3, if i update expectedStartTime or duration

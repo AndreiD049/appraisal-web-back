@@ -5,7 +5,7 @@ const UserService = {
   populate: (doc) =>
     doc
       .populate({ path: 'role', select: 'name securityLevel' })
-      .populate({ path: 'teams', select: 'name' })
+      .populate({ path: 'teams team', select: 'name' })
       .populate({ path: 'organizations', select: 'name' })
       .populate({ path: 'organization', select: 'name' }),
 

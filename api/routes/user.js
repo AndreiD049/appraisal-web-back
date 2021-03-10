@@ -58,13 +58,11 @@ userRouter.put('/:id', async (req, res, next) => {
     let result;
     if (req.user.id === user.id) {
       result = await (await UserService.updateSelf(user))
-        .populate('organizations')
-        .populate('teams')
+        .populate('organizations teams team')
         .execPopulate();
     } else {
       result = await (await UserService.updateUser(user))
-        .populate('organizations')
-        .populate('teams')
+        .populate('organizations teams team')
         .execPopulate();
     }
     res.json(result);

@@ -5,6 +5,10 @@ const constants = {
       UPDATE: 'UPDATE',
       DELETE: 'DELETE',
     },
+    topics: {
+      notifications: 'notifications',
+      tasks: 'tasks',
+    },
   },
   tasks: {
     status: {
