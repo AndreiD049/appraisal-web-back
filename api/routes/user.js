@@ -1,4 +1,5 @@
 const userRouter = require('express').Router();
+const Joi = require('joi');
 const UserService = require('../../services/UserService');
 const { cacheRequest } = require('../middlewares');
 
@@ -20,11 +21,12 @@ userRouter.get(
   cacheRequest({ maxAge: 3600, mustRevalidate: true }),
   async (req, res, next) => {
     try {
-      const [users, newcomers] = await Promise.all([
-        UserService.getUserTeamMembers(req.user),
-        UserService.getNewcomers(),
-      ]);
-      res.json(users.concat(newcomers));
+      await Joi.object({
+        teams: Joi.array().items(Joi.string()),
+      })
+      const {teams} = req.query;
+      const result = await UserService.getUsersFromPrimaryTeams(teams);
+      res.json(result);
     } catch (err) {
       next(err);
     }

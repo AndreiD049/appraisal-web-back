@@ -152,6 +152,16 @@ const constants = {
         delete: 'delete',
       },
     },
+    TASK_PLANNING: {
+      code: 'TASK-PLANNING',
+      description: 'Access to read, update, create or delete task planning items',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
   },
 };
 

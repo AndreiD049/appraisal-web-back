@@ -9,6 +9,10 @@ const TaskFlowSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    color: {
+      type: String,
+      required: true,
+    },
     teams: [
       {
         type: ObjectId,
@@ -17,10 +21,15 @@ const TaskFlowSchema = new mongoose.Schema(
         index: true,
       },
     ],
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     organizationId: {
       type: mongoose.ObjectId,
       required: true,
       index: true,
+      ref: 'Organization',
     },
     createdUser: {
       type: mongoose.Types.ObjectId,

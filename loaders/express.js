@@ -9,7 +9,7 @@ const teamRouter = require('../api/routes/team');
 const securityRouter = require('../api/routes/security');
 const settingsRouter = require('../api/routes/settings');
 const reportingRouter = require('../api/routes/reporting');
-const { taskAPI, taskFlowAPI, taskRuleAPI } = require('../components/tasks');
+const { taskAPI, taskFlowAPI, taskRuleAPI, taskPlanningAPI } = require('../components/tasks');
 const { auditsRouter } = require('../api/routes/audits');
 
 const init = ({ app }) => {
@@ -40,6 +40,7 @@ const init = ({ app }) => {
   app.use('/api/tasks', taskAPI);
   app.use('/api/task-rules', taskRuleAPI);
   app.use('/api/task-flows', taskFlowAPI);
+  app.use('/api/task-planning', taskPlanningAPI);
 
   return app;
 };

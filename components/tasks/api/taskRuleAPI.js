@@ -4,7 +4,7 @@ const { AuthorizeReq } = require('../../../services/AuthorizationService').Autho
 const { TASK_RULE } = require('../../../config/constants').securities;
 const { taskRuleSchema } = require('../taskUtils');
 
-// before each requestm check if there is a user
+// before each request check if there is a user
 taskRuleRouter.use(async (req, res, next) => {
   if (!req.user) next(new Error('user is not attached to the request'));
   next();

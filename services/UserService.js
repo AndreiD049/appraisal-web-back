@@ -108,7 +108,7 @@ const UserService = {
       },
     ]);
     const result = await UserModel.populate(members, {
-      path: 'teams organizations organization role',
+      path: 'teams team organizations organization role',
       select: 'name',
     });
     return result;
@@ -124,9 +124,37 @@ const UserService = {
       teams: { $in: dbUser.teams },
       organizations: dbUser.organization._id,
     }).populate({
-      path: 'teams organizations organization role',
+      path: 'teams team organizations organization role',
       select: 'name',
     });
+  },
+
+  /**
+   * Given an array of teams, return all users that are part of those teams
+   * @param {Array} teams 
+   */
+  async getUsersFromTeams(teams) {
+    if (!Array.isArray(teams)) throw new Error('teams must be an array');
+    if (!teams.every((i) => typeof i === 'string')) throw new Error('Invalid argument supplied');
+    return UserModel.find({
+      teams: {$in: teams},
+    }).populate({
+      path: 'teams team organizations organization role',
+      select: 'name',
+    })
+  },
+
+  /**
+   * Given an array of teams, return all users that are part of those teams
+   * @param {Array} teams 
+   */
+  async getUsersFromPrimaryTeams(teams = []) {
+    return UserModel.find({
+      team: teams,
+    }).populate({
+      path: 'teams team organizations organization role',
+      select: 'name securityLevel',
+    })
   },
 
   /**

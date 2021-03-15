@@ -57,10 +57,17 @@ const checkBusySchema = Joi.object({
   user: Joi.string().required(),
 });
 
+const taskPlanningSchema = Joi.array().items(Joi.object({
+  date: Joi.date().required(),
+  user: Joi.string().required(),
+  flows: Joi.array().required(),
+}));
+
 module.exports = {
   dailyTypeSchema,
   taskSchema,
   taskRuleSchema,
   taskStatusUpdateSchema,
   checkBusySchema,
+  taskPlanningSchema,
 }

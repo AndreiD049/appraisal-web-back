@@ -33,7 +33,7 @@ const validateBody = (body) => {
 
 const validateBodyRequest = async (req, res, next) => {
   try {
-    const dbUser = await UserService(req.user?.id);
+    const dbUser = await UserService.getUser(req.user?.id);
     req.body.organization = dbUser?.organization?.id;
     const { body } = req;
     const result = validateBody(body);
