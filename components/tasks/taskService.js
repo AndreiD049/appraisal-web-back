@@ -1,4 +1,4 @@
-const moment = require('moment');
+const { DateTime } = require('luxon');
 const constants = require('../../config/constants');
 const UserService = require('../../services/UserService');
 const Task = require('./task');
@@ -6,6 +6,7 @@ const taskDAL = require('./taskDAL');
 const { and, validate, perform, If } = require('../../services/validators');
 const MessagePublisher = require('../MessagePublisher');
 const createTransaction = require('../../models/dbutils/transaction');
+const TaskFlowService = require('./taskFlowService');
 
 const { types, DayTypes } = constants.tasks;
 const {TASK} = constants.securities;
@@ -13,13 +14,13 @@ const {TASK} = constants.securities;
 const TaskService = {
   async getDailyTasks(fromDate, toDate, users, user) {
     const dbUser = await UserService.getUser(user.id);
-    const toDateCalculated = moment(toDate);
+    let toDateCalculated = DateTime.fromISO(toDate);
     if (fromDate > toDate) {
-      toDateCalculated.add(1, 'day');
+      toDateCalculated = toDateCalculated.plus({ day: 1 });
     }
-    const rules = await taskDAL.getUngeneratedRules(users, toDateCalculated.toDate());
-    await this.extendRules(dbUser, rules, moment(toDateCalculated).endOf('month').toDate());
-    return taskDAL.getTasks(users, dbUser, fromDate, toDateCalculated.toDate())
+    const rules = await taskDAL.getUngeneratedRules(users, toDateCalculated.toJSDate());
+    await this.extendRules(dbUser, rules, toDateCalculated.endOf('month').toJSDate());
+    return taskDAL.getTasks(users, dbUser, fromDate, toDateCalculated.toJSDate())
   },
 
   async getBusyTasks(user) {
@@ -55,10 +56,10 @@ const TaskService = {
    * @param {String} dateTo 
    */
   async getTaskPlanningItems(dateFrom, dateTo, teams) {
-    const momentFrom = moment(dateFrom).hours(0).minutes(0).seconds(0);
-    const momentTo = moment(dateTo).hours(23).minutes(59).seconds(59);
+    const momentFrom = DateTime.fromISO(dateFrom).startOf('day');
+    const momentTo = DateTime.fromISO(dateTo).endOf('day');
     const users = (await UserService.getUsersFromTeams(teams)).map((u) => u.id);
-    return taskDAL.getTaskPlanningItems(momentFrom.toDate(), momentTo.toDate(), users);
+    return taskDAL.getTaskPlanningItems(momentFrom.toJSDate(), momentTo.toJSDate(), users);
   },
 
   async createTask(data, user) {
@@ -159,8 +160,8 @@ const TaskService = {
     // if status changes to Paused
     // update actual duration = now - actual start date
     if (status === constants.tasks.status.Paused) {
-      const duration = moment.duration(moment().diff(initial.lastStartDate));
-      update.actualDuration = initial.actualDuration + Math.round(duration.asMinutes());
+      const duration = DateTime.now().diff(DateTime.fromJSDate(initial.lastStartDate))
+      update.actualDuration = initial.actualDuration + Math.round(duration.minutes);
     }
     // if status is Finished or cancelled
     if (status === constants.tasks.status.Finished ||
@@ -168,8 +169,8 @@ const TaskService = {
       const finishDate = data.actualFinishDate ?? new Date();
       // if last status is inProgress, we calculate the duration, same as for Paused
       if (initial.status === constants.tasks.status.InProgress) {
-        const duration = moment.duration(moment().diff(initial.lastStartDate));
-        update.actualDuration = initial.actualDuration + Math.round(duration.asMinutes());
+        const duration = DateTime.now().diff(DateTime.fromJSDate(initial.lastStartDate))
+        update.actualDuration = initial.actualDuration + Math.round(duration.minutes);
       }
       // also we insert the actualFinishDate and userFinished
       update.userFinished = user.id;
@@ -202,8 +203,9 @@ const TaskService = {
   async getTaskRules(user) {
     const dbUser = await UserService.getUser(user.id);
     const users = (await UserService.getTeamUsers(user)).map((u) => u.id).concat(user.id);
-    // TODO: add flows
-    const result = await taskDAL.getTaskRules(dbUser, users);
+    const flows = (await TaskFlowService.getTaskFlows(user)).map((f) => f.id);
+    // Return rules and translate the weekly days if it's a weekly rule
+    const result = await taskDAL.getTaskRules(dbUser, users, flows);
     return result;
   },
 
@@ -231,7 +233,7 @@ const TaskService = {
         organizationId: dbUser?.organization?.id,
       }, transaction);
       // Extend the created rule for 1 month initially
-      await this.extendRules(dbUser, [rule], moment(rule.validFrom).add(1, 'month'), transaction);
+      await this.extendRules(dbUser, [rule], DateTime.fromJSDate(rule.validFrom).plus({ month: 1}).toJSDate(), transaction);
       return rule;
     });
   },
@@ -254,7 +256,7 @@ const TaskService = {
       // 1st phase, generate more tasks or delete the unnecessary ones
       if (data.validFrom || data.validTo) {
         if (data.validFrom && rule.validFrom > new Date(data.validFrom)) {
-          await taskDAL.createTasks(await this.generateTasksBetween(rule, data.validFrom, rule.validFrom, user), transaction)
+          await taskDAL.createTasks(await this.generateTasksBetween(rule, new Date(data.validFrom), rule.validFrom, user), transaction)
         }
         // if i insert valid from, delete all rules that are unmodified before that date
         if (data.validFrom && rule.validFrom < new Date(data.validFrom)) {
@@ -280,7 +282,7 @@ const TaskService = {
       }
       // phase 3, if i update expectedStartTime or duration
       if (data.taskStartTime || data.taskDuration) {
-        await taskDAL.deleteTasksOfRule(rule.id, {}, moment().hours(0).minutes(0).seconds(0).toDate(), null, transaction);
+        await taskDAL.deleteTasksOfRule(rule.id, {}, DateTime.now().startOf('day').toJSDate(), null, transaction);
         rule = await taskDAL.updateTaskRule(rule.id, { generatedUntil: new Date() }, transaction);
       }
       return taskDAL.updateTaskRule(ruleId, {
@@ -303,8 +305,8 @@ const TaskService = {
     // if valid, generate a task
     if (rule.users.length) {
       const dates = [];
-      for (let i = moment(dateFrom); i.isBefore(dateTo); i.add(1, 'd')) {
-        dates.push(i.toDate());
+      for (let i = DateTime.fromJSDate(dateFrom); i < dateTo; i = i.plus({ day: 1 })) {
+        dates.push(i.toJSDate());
       }
       const tasks = await Promise.all(dates.map((date) => {
         const valid = this.validateRule(rule, date);
@@ -364,13 +366,13 @@ const TaskService = {
     await transaction.execute(async () => {
       await Promise.all(rules.map(async (rule) => {
         const oldDate = rule.generatedUntil;
-        let maxDate = moment.min(moment(date).add(1, 'month'), moment().add(1, 'year'));
+        let maxDate = DateTime.min(DateTime.fromJSDate(date).plus({ month: 1 }), DateTime.now().plus({ year: 1 }));
         if (rule.validTo) {
-          maxDate = moment.min(maxDate, moment(rule.validTo), moment().add(1, 'year'));
+          maxDate = DateTime.min(maxDate, DateTime.fromJSDate(rule.validTo), DateTime.now().plus({ year: 1 }));
         }
-        await taskDAL.updateTaskRule(rule.id, { generatedUntil: maxDate }, transaction);
-        const dateFrom = moment(oldDate ?? rule.validFrom);
-        await taskDAL.createTasks(await this.generateTasksBetween(rule, dateFrom, maxDate, user, transaction), transaction);
+        await taskDAL.updateTaskRule(rule.id, { generatedUntil: maxDate.toJSDate() }, transaction);
+        const dateFrom = oldDate ?? rule.validFrom;
+        await taskDAL.createTasks(await this.generateTasksBetween(rule, dateFrom, maxDate.toJSDate(), user, transaction), transaction);
       }));
     });
   },
@@ -477,14 +479,14 @@ const TaskService = {
   validateRule(rule, date) {
     const { type } = rule;
     // if date is not valid, return false
-    if (!moment.isDate(date) && !moment.isMoment(date)) return false;
+    if (Number.isNaN(+date)) return false;
     // if date is farther than a year from now, return false
-    if (moment().add(1, 'y').isBefore(date)) return false;
+    if (DateTime.now().plus({ year: 1 }) < date) return false;
     switch (type) {
       case types.Daily:
         return this.dailyValidate(rule, date);
       case types.Weekly:
-        return false;
+        return this.weeklyValidate(rule, date);
       case types.Monthly:
         return false;
       default:
@@ -494,10 +496,24 @@ const TaskService = {
 
   dailyValidate(rule, date) {
     if (rule.dailyType === DayTypes.Calendar) return true;
-    const weekDay = moment(date).day();
+    const weekDay = DateTime.fromJSDate(date).weekday;
     if (weekDay > 0 && weekDay < 6) return true;
     return false;
   },
+
+  // If date weekday is in rule.weeklyDays then it's valid
+  /**
+   * 
+   * @param {Object} rule 
+   * @param {Date} date 
+   */
+  weeklyValidate(rule, date) {
+    const weeklyDays = rule.weeklyDays.map((d) => DateTime.fromJSDate(d).weekday);
+    const targetDay = DateTime.fromJSDate(date).weekday;
+    if (weeklyDays.indexOf(targetDay) !== -1) return true;
+    return false;
+  },
+
 };
 
 module.exports = TaskService; 

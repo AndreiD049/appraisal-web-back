@@ -31,17 +31,13 @@ const TaskRuleSchema = new mongoose.Schema(
     },
     weeklyDays: [
       {
-        type: Number,
-        min: 1,
-        max: 7,
+        type: Date,
         required: false,
       },
     ],
     monthlyMonths: [
       {
-        type: Number,
-        min: 1,
-        max: 12,
+        type: Date,
         required: false,
       },
     ],
@@ -101,6 +97,10 @@ const TaskRuleSchema = new mongoose.Schema(
         ref: 'TaskFlow',
       },
     ],
+    zone: {
+      type: String,
+      required: true,
+    },
     organizationId: {
       type: mongoose.ObjectId,
       required: true,

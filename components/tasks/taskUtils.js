@@ -30,8 +30,8 @@ const taskRuleSchema = Joi.object({
   description: Joi.string().empty(''),
   type: Joi.string().allow(...Object.keys(constants.tasks.types)).required(),
   dailyType: Joi.string().allow(...Object.keys(constants.tasks.DayTypes)),
-  weeklyDays: Joi.number().min(1).max(7),
-  monthlyMonths: Joi.string().min(1).max(12),
+  weeklyDays: Joi.array().items(Joi.date()),
+  monthlyMonths: Joi.array().items(Joi.date()),
   monthlyOn: Joi.number(),
   monthlyOnType: Joi.string().allow(...Object.keys(constants.tasks.MonthlyOnType)),
   isBackgroundTask: Joi.bool().required(),
@@ -43,6 +43,7 @@ const taskRuleSchema = Joi.object({
   taskDuration: Joi.number(),
   users: Joi.array(),
   flows: Joi.array(),
+  zone: Joi.string(),
   organizationId: Joi.string(),
   createdUser: Joi.string(),
 });

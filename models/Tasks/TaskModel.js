@@ -92,6 +92,10 @@ const TaskSchema = new mongoose.Schema(
       type: Boolean,
       required: true,
     },
+    zone: {
+      type: String,
+      required: true,
+    },
     organizationId: {
       type: mongoose.ObjectId,
       required: true,

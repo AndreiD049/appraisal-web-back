@@ -74,7 +74,7 @@ taskPlanningRouter.put('/:planningId/add-flow/:id', AuthorizeReq(TASK_PLANNING.c
   });
 });
 
-taskPlanningRouter.delete('/:planningId/flows/:id', AuthorizeReq(TASK_PLANNING.code, TASK_PLANNING.grants.delete), async (req, res, next) => {
+taskPlanningRouter.delete('/:planningId/remove-flow/:id', AuthorizeReq(TASK_PLANNING.code, TASK_PLANNING.grants.delete), async (req, res, next) => {
   await endpointWrapper(next, async () => {
     const { planningId, id } = req.params; 
     await Joi.string().required().validateAsync(id);

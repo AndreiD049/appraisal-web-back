@@ -38,7 +38,7 @@ const AppraisalService = {
    */
   async getOrphanItems(user, type = null) {
     // invalid user, or no organization
-    const dbUser = await UserService.getUser(user.id);
+    const dbUser = await UserService.getUser(user?.id);
     if (!dbUser) return [];
 
     const query = {

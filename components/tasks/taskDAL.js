@@ -1,4 +1,4 @@
-const moment = require('moment');
+const { DateTime } = require('luxon');
 const { TaskModel } = require('../../models/Tasks/TaskModel');
 const { TaskRuleModel } = require('../../models/Tasks/TaskRuleModel');
 const { TaskFlowModel } = require('../../models/Tasks/TaskFlowModel');
@@ -46,13 +46,13 @@ const taskDAL = {
   },
 
   async getTasksOnDate(date, options) {
-    const dtStart = moment(date).startOf('day');
-    const dtEnd = moment(date).endOf('day');
+    const dtStart = DateTime.fromJSDate(date).startOf('day');
+    const dtEnd = DateTime.fromJSDate(date).endOf('day');
     const query = {
       ...options,
       $and: [
-        { expectedStartDate: { $gte: dtStart.toDate() } },
-        { expectedStartDate: { $lte: dtEnd.toDate() } }
+        { expectedStartDate: { $gte: dtStart.toJSDate() } },
+        { expectedStartDate: { $lte: dtEnd.toJSDate() } }
       ]
     };
     return TaskModel.find(query).populate({ path: 'assignedTo', select: 'username' });
@@ -71,6 +71,7 @@ const taskDAL = {
   },
 
   async createTasks(tasks, transaction = null) {
+    if (!tasks) return null;
     return TaskModel.insertMany(tasks, { session: transaction });
   },
 
@@ -107,7 +108,7 @@ const taskDAL = {
   },
 
   async deleteTask(id) {
-    return TaskModel.findOneAndDelete(id);
+    return TaskModel.findByIdAndDelete(id);
   },
 
   /**
@@ -117,17 +118,18 @@ const taskDAL = {
   async getTaskRules(user, users = [], flows = []) {
     const query = {
       organizationId: user?.organization?.id,
+      $or: []
     };
-    if (users.length) query.users = { $in: users };
-    if (flows.length) query.relatedFlows = flows;
-    return TaskRuleModel.find(query).populate({ path: 'users', select: 'username' });
+    if (users.length) query.$or.push({ users: { $in: users }});
+    if (flows.length) query.$or.push({flows: { $in: flows }});
+    return TaskRuleModel.find(query).populate({ path: 'users flows', select: 'username color name' });
   },
 
   async getTaskRulesByFlow(flowId, date = null) {
     const query = {
       flows: flowId,
     };
-    const dtEnd = moment(date).endOf('day').toDate();
+    const dtEnd = DateTime.fromJSDate(date).endOf('day').toJSDate();
     if (date instanceof Date) {
       query.validFrom = { $lte: dtEnd, };
       query.$or = [
@@ -139,16 +141,17 @@ const taskDAL = {
   },
 
   async getTaskRule(id) {
-    return TaskRuleModel.findById(id).populate({ path: 'users createdUser', select: 'username' });
+    return TaskRuleModel.findById(id).populate({ path: 'users createdUser flows', select: 'username color name' });
   },
 
   async createTaskRule(data, transaction = null) {
     const doc = new TaskRuleModel(data);
-    return (await doc.save({ session: transaction })).populate({ path: 'users', select: 'username' });
+    const result = await doc.save({ session: transaction });
+    return TaskRuleModel.populate(result, { path: 'users createdUser flows', select: 'username color name' });
   },
 
   async updateTaskRule(id, data, transaction) {
-    return TaskRuleModel.findByIdAndUpdate(id, data, { new: true, session: transaction }).populate({ path: 'users', select: 'username' });
+    return TaskRuleModel.findByIdAndUpdate(id, data, { new: true, session: transaction }).populate({ path: 'users flows', select: 'username color name' });
   },
 
   async deleteTaskRule(id) {
