@@ -74,7 +74,7 @@ securityRouter.get(
 /**
  * Get current user's permissions
  */
-securityRouter.get('/permissions/me', async (req, res, next) => {
+securityRouter.get('/permissions/me', cacheRequest({ maxAge: 600 }), async (req, res, next) => {
   try {
     const dbUser = await UserService.getUser(req.user?.id);
     const { id, role, organization } = dbUser;

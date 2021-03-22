@@ -23,6 +23,7 @@ const taskSchema = Joi.object({
   relatedFlows: Joi.array(),
   isBackgroundTask: Joi.bool().required(),
   organizationId: Joi.string(),
+  zone: Joi.string(),
 });
 
 const taskRuleSchema = Joi.object({
