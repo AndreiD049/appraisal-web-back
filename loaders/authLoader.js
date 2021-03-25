@@ -1,9 +1,14 @@
 const auth = async (req, res, next) => {
-  const headUser = JSON.parse(req.header('user'));
-  if (headUser !== null) {
-    req.user = headUser;
+  try {
+    const headUser = JSON.parse(req.header('user'));
+    if (headUser !== null) {
+      req.user = headUser;
+    }
+  } catch {
+    req.user = null;
+  } finally {
+    next();
   }
-  next();
 };
 
 const init = ({ app }) => {
