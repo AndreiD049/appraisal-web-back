@@ -15,6 +15,11 @@ const TeamSchema = new mongoose.Schema(
       required: true,
       ref: 'User',
     },
+    organizationId: {
+      type: mongoose.Types.ObjectId,
+      required: true,
+      ref: 'Organization',
+    },
     modifiedUser: {
       type: mongoose.Types.ObjectId,
       required: false,

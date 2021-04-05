@@ -5,7 +5,7 @@ const UserService = {
   populate: (doc) =>
     doc
       .populate({ path: 'role', select: 'name securityLevel' })
-      .populate({ path: 'teams', select: 'name' })
+      .populate({ path: 'teams team', select: 'name' })
       .populate({ path: 'organizations', select: 'name' })
       .populate({ path: 'organization', select: 'name' }),
 
@@ -108,50 +108,53 @@ const UserService = {
       },
     ]);
     const result = await UserModel.populate(members, {
-      path: 'teams organizations organization role',
+      path: 'teams team organizations organization role',
       select: 'name',
     });
     return result;
   },
 
-  async getUserTeamMembersSameLevel(user) {
+  // Get all the users from that team
+  async getTeamUsers(user) {
     const dbUser = await this.getUser(user.id);
     if (!dbUser.role || !dbUser.organization) {
       return [];
     }
-    const members = await UserModel.aggregate([
-      {
-        $lookup: {
-          from: 'roles',
-          localField: 'role',
-          foreignField: '_id',
-          as: 'roleObj',
-        },
-      },
-      {
-        $match: {
-          teams: { $in: dbUser.teams },
-          organizations: dbUser.organization._id,
-          'roleObj.securityLevel': { $eq: dbUser.role.securityLevel },
-        },
-      },
-      {
-        $addFields: {
-          id: '$_id',
-        },
-      },
-      {
-        $project: {
-          _id: 0,
-          roleObj: 0,
-        },
-      },
-    ]);
-    const result = await UserModel.populate(members, {
-      path: 'teams organizations organization role',
+    return UserModel.find({
+      teams: { $in: dbUser.teams },
+      organizations: dbUser.organization._id,
+    }).populate({
+      path: 'teams team organizations organization role',
       select: 'name',
     });
-    return result;
+  },
+
+  /**
+   * Given an array of teams, return all users that are part of those teams
+   * @param {Array} teams 
+   */
+  async getUsersFromTeams(teams) {
+    if (!Array.isArray(teams)) throw new Error('teams must be an array');
+    if (!teams.every((i) => typeof i === 'string')) throw new Error('Invalid argument supplied');
+    return UserModel.find({
+      teams: {$in: teams},
+    }).populate({
+      path: 'teams team organizations organization role',
+      select: 'name',
+    })
+  },
+
+  /**
+   * Given an array of teams, return all users that are part of those teams
+   * @param {Array} teams 
+   */
+  async getUsersFromPrimaryTeams(teams = []) {
+    return UserModel.find({
+      team: teams,
+    }).populate({
+      path: 'teams team organizations organization role',
+      select: 'name securityLevel',
+    })
   },
 
   /**

@@ -1,4 +1,44 @@
 const constants = {
+  connections: {
+    actions: {
+      INSERT: 'INSERT',
+      UPDATE: 'UPDATE',
+      DELETE: 'DELETE',
+    },
+    topics: {
+      notifications: 'notifications',
+      tasks: 'tasks',
+    },
+  },
+  tasks: {
+    status: {
+      New: 'New',
+      InProgress: 'InProgress',
+      Paused: 'Paused',
+      Finished: 'Finished',
+      Cancelled: 'Cancelled',
+    },
+    types: {
+      Daily: 'Daily',
+      Weekly: 'Weekly',
+      Monthly: 'Monthly',
+    },
+    DayTypes: {
+      Workday: 'Work',
+      Calendar: 'Calendar',
+    },
+    MonthlyOnType: {
+      Day: 'Day',
+      Workday: 'Workday',
+      Monday: 'Monday',
+      Tuesday: 'Tuesday',
+      Wednesday: 'Wednesday',
+      Thursday: 'Thursday',
+      Friday: 'Friday',
+      Saturday: 'Saturday',
+      Sunday: 'Sunday',
+    },
+  },
   securities: {
     REPORTS: {
       code: 'REPORTS',
@@ -75,6 +115,46 @@ const constants = {
     REPORT_TEMPLATES: {
       code: 'REPORT-TEMPLATES',
       description: 'Access to create and edit report templates',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
+    TASK: {
+      code: 'TASK',
+      description: 'Access to read, update, create or delete tasks',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
+    TASK_RULE: {
+      code: 'TASK-RULE',
+      description: 'Access to read, update, create or delete task rules',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
+    TASK_FLOW: {
+      code: 'TASK-FLOW',
+      description: 'Access to read, update, create or delete task flows',
+      grants: {
+        read: 'read',
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      },
+    },
+    TASK_PLANNING: {
+      code: 'TASK-PLANNING',
+      description: 'Access to read, update, create or delete task planning items',
       grants: {
         read: 'read',
         create: 'create',

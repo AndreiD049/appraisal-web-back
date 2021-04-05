@@ -5,6 +5,8 @@
  * @returns {async function(): {result: boolean, message: string}}
  */
 
+const { AppraisalPeriodModel } = require('../../models/AppraisalPeriodModel');
+
 const periodExists = (period) => async () => ({
   result: Boolean(period),
   message: "Period doesn't exist.",
@@ -18,7 +20,7 @@ const itemExists = (item) => async () => ({
 const periodStatus = (period, status, message = null) => async () => {
   try {
     return {
-      result: Boolean(period.status === status),
+      result: Boolean((await AppraisalPeriodModel.findById(period.id))?.status === status),
       message: `Period '${period.name}' status is not valid. Expected (${status})`,
     };
   } catch (err) {
@@ -45,8 +47,8 @@ const periodLocked = (period, userId, message = null) => async () => {
 };
 
 const itemStatus = (item, status) => async () => ({
-  result: Boolean(item.status === status),
-  message: `Item '${item.content}' status is not valid. Expected '${status}'.`,
+  result: Boolean(item?.status === status),
+  message: `Item '${item?.content}' status is not valid. Expected '${status}'.`,
 });
 
 const itemType = (item, type) => async () => ({

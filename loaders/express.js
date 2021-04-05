@@ -1,4 +1,4 @@
-const bodyParser = require('body-parser');
+const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const meRouter = require('../api/routes/me');
@@ -9,6 +9,7 @@ const teamRouter = require('../api/routes/team');
 const securityRouter = require('../api/routes/security');
 const settingsRouter = require('../api/routes/settings');
 const reportingRouter = require('../api/routes/reporting');
+const { taskAPI, taskFlowAPI, taskRuleAPI, taskPlanningAPI } = require('../components/tasks');
 const { auditsRouter } = require('../api/routes/audits');
 
 const init = ({ app }) => {
@@ -24,8 +25,8 @@ const init = ({ app }) => {
     res.header('Access-Control-Allow-Origin', '*');
     next();
   });
-  app.use(bodyParser.urlencoded({ extended: true }));
-  app.use(bodyParser.json());
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json());
 
   app.use('/api', meRouter);
   app.use('/api/periods', appraisalPeriodsRouter);
@@ -36,6 +37,10 @@ const init = ({ app }) => {
   app.use('/api/security', securityRouter);
   app.use('/api/settings', settingsRouter);
   app.use('/api/reporting', reportingRouter);
+  app.use('/api/tasks', taskAPI);
+  app.use('/api/task-rules', taskRuleAPI);
+  app.use('/api/task-flows', taskFlowAPI);
+  app.use('/api/task-planning', taskPlanningAPI);
 
   return app;
 };

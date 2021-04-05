@@ -4,7 +4,7 @@ const { AuthorizeReq } = require('../../../services/AuthorizationService').Autho
 
 // before each requestm check if there is a user
 auditsRouter.use(async (req, res, next) => {
-  if (!req.user) next(new error('user is not attached to the request'));
+  if (!req.user) next(new Error('user is not attached to the request'));
   next();
 });
 

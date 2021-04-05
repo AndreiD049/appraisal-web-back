@@ -30,6 +30,11 @@ const UserSchema = new mongoose.Schema(
         ref: 'Team',
       },
     ],
+    team: {
+      type: mongoose.Types.ObjectId,
+      required: false,
+      ref: 'Team',
+    },
     organization: {
       type: mongoose.Types.ObjectId,
       required: false,

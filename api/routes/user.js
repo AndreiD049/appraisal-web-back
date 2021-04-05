@@ -1,4 +1,5 @@
 const userRouter = require('express').Router();
+const Joi = require('joi');
 const UserService = require('../../services/UserService');
 const { cacheRequest } = require('../middlewares');
 
@@ -20,16 +21,32 @@ userRouter.get(
   cacheRequest({ maxAge: 3600, mustRevalidate: true }),
   async (req, res, next) => {
     try {
-      const [users, newcomers] = await Promise.all([
-        UserService.getUserTeamMembers(req.user),
-        UserService.getNewcomers(),
-      ]);
-      res.json(users.concat(newcomers));
+      await Joi.object({
+        teams: Joi.array().items(Joi.string()),
+      })
+      const {teams} = req.query;
+      const result = await UserService.getUsersFromPrimaryTeams(teams);
+      res.json(result);
     } catch (err) {
       next(err);
     }
   },
 );
+
+/**
+ * Get all users that have at least one team intersecting with mine
+ */
+userRouter.get(
+  '/team-users',
+  async (req, res, next) => {
+    try {
+      const result = await UserService.getTeamUsers(req.user);
+      res.json(result);
+    } catch (err) {
+      next(err)
+    }
+  }
+)
 
 /**
  * I want to be able to update users via PUT call
@@ -43,13 +60,11 @@ userRouter.put('/:id', async (req, res, next) => {
     let result;
     if (req.user.id === user.id) {
       result = await (await UserService.updateSelf(user))
-        .populate('organizations')
-        .populate('teams')
+        .populate('organizations teams team')
         .execPopulate();
     } else {
       result = await (await UserService.updateUser(user))
-        .populate('organizations')
-        .populate('teams')
+        .populate('organizations teams team')
         .execPopulate();
     }
     res.json(result);

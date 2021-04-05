@@ -12,6 +12,12 @@ const userExists = (user) => async () => ({
   message: "User doesn't exist.",
 });
 
+/**
+ * 
+ * @param {{ id: String }} user 
+ * @param {String} code 
+ * @param {String} grant 
+ */
 const userAuthorized = (user, code, grant) => async () => ({
   result: await AuthorizationService.Authorize(user, code, grant),
   message: `Access denied. Code: ${code}, Grant: ${grant}`,

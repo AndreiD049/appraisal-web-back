@@ -1,5 +1,6 @@
 const securityRouter = require('express').Router();
 const { PermissionService, RoleService } = require('../../services/AuthorizationService');
+const UserService = require('../../services/UserService');
 const { cacheRequest } = require('../middlewares');
 
 const validateBody = (body) => {
@@ -30,9 +31,10 @@ const validateBody = (body) => {
   return result;
 };
 
-const validateBodyRequest = (req, res, next) => {
+const validateBodyRequest = async (req, res, next) => {
   try {
-    req.body.organization = req.user.organization.id;
+    const dbUser = await UserService.getUser(req.user?.id);
+    req.body.organization = dbUser?.organization?.id;
     const { body } = req;
     const result = validateBody(body);
     if (!result.valid) {
@@ -72,9 +74,10 @@ securityRouter.get(
 /**
  * Get current user's permissions
  */
-securityRouter.get('/permissions/me', async (req, res, next) => {
+securityRouter.get('/permissions/me', cacheRequest({ maxAge: 600 }), async (req, res, next) => {
   try {
-    const { id, role, organization } = req.user;
+    const dbUser = await UserService.getUser(req.user?.id);
+    const { id, role, organization } = dbUser;
     if (!organization) {
       return res.json([]);
     }
@@ -165,7 +168,8 @@ securityRouter.get(
  */
 securityRouter.get('/permissions/role', cacheRequest({ noCache: true }), async (req, res, next) => {
   try {
-    const result = await PermissionService.getAllRolesPermissions(req.user.organization.id);
+    const dbUser = await UserService.getUser(req.user.id);
+    const result = await PermissionService.getAllRolesPermissions(dbUser?.organization?.id);
     res.json(result);
   } catch (err) {
     next(err);

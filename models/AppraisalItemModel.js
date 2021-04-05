@@ -39,6 +39,12 @@ const AppraisalItemSchema = new mongoose.Schema(
       ref: 'AppraisalPeriod',
       index: true,
     },
+    originalPeriodId: {
+      type: mongoose.ObjectId,
+      required: false,
+      default: null,
+      ref: 'AppraisalPeriod',
+    },
     organizationId: {
       type: mongoose.ObjectId,
       required: true,
