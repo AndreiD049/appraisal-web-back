@@ -21,7 +21,7 @@ class Task {
     this.ruleId = data.rule.id;
     this.title = data.rule.title;
     this.expectedStartDate = startDateTime.toJSDate();
-    this.expectedFinishDate = endDateTime.toJSDate();
+    this.duration = data.rule.taskDuration;
     this.createdUser = data.user?._id ?? data.user.id;
     this.isBackgroundTask = data.rule.isBackgroundTask;
     this.organizationId = data.user?.organization?.id;

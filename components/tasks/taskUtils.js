@@ -15,7 +15,7 @@ const taskSchema = Joi.object({
   description: Joi.string().empty(''),
   remarks: Joi.string().empty(''),
   expectedStartDate: Joi.date().required(),
-  expectedFinishDate: Joi.date().required(),
+  duration: Joi.number().required(),
   actualStartDate: Joi.date(),
   actualDuration: Joi.number(),
   actualFinishDate: Joi.date(),

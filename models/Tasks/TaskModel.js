@@ -49,8 +49,8 @@ const TaskSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    expectedFinishDate: {
-      type: Date,
+    duration: {
+      type: Number,
       required: true,
     },
     actualStartDate: {

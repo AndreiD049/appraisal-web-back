@@ -19,7 +19,6 @@ taskFlowRouter.get('/:id', AuthorizeReq(TASK_FLOW.code, TASK_FLOW.grants.read), 
       id: Joi.string(),
     }).validateAsync(req.params);
     const { id } = req.params;
-    // const result = await TaskService.getTaskFlow(id, req.user);
     const result = await TaskFlowService.getTaskFlow(id, req.user);
     res.json(result);
   } catch (err) {
