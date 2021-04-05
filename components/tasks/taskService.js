@@ -62,6 +62,10 @@ const TaskService = {
     return taskDAL.getTaskPlanningItems(momentFrom.toJSDate(), momentTo.toJSDate(), users);
   },
 
+  async getTaskPlanningItemsOfFlow(flowId, user, transaction = null) {
+    return taskDAL.getTaskPlanningItemsByFlow(flowId, user, transaction);
+  },
+
   async createTask(data, user) {
     const dbUser = await UserService.getUser(user.id);
     return taskDAL.createTask({
@@ -77,7 +81,7 @@ const TaskService = {
     await perform(validate.userExists(dbUser))
     const planningDate = new Date(data.date);
     const calls = data.flows.map((flow) => {
-      return this.createFlowTasks(flow, planningDate, data.user, dbUser);
+      return this.createFlowTasks(flow, planningDate, data.user.toString(), dbUser);
     });
     await Promise.all(calls);
     return taskDAL.createTaskPlanningItem(data, dbUser);
@@ -95,7 +99,7 @@ const TaskService = {
       const createdPlanning = await taskDAL.createTaskPlanningItem(item, dbUser);
       // generate tasks for created flows
       const flowCalls = createdPlanning.flows.map((flow) => {
-        return this.createFlowTasks(flow, createdPlanning.date, createdPlanning.user, dbUser);
+        return this.createFlowTasks(flow, createdPlanning.date, createdPlanning.user.toString(), dbUser);
       });
       await Promise.all(flowCalls);
       return createdPlanning;
@@ -103,22 +107,35 @@ const TaskService = {
     return Promise.all(calls); 
   },
 
-  async addFlowToPlanning(planningId, flowId, user) {
+  async addFlowToPlanning(planningId, flowId, user, transaction = null) {
     const dbUser = await UserService.getUser(user.id);
     await perform(validate.userExists(dbUser));
-    const planning = await taskDAL.getTaskPlanningItem(planningId);
+    const planning = await taskDAL.getTaskPlanningItem(planningId, transaction);
     if (!planning) throw new Error('Planning was not found');
-    await this.createFlowTasks(flowId, planning.date, planning.user, user);
-    return taskDAL.addFlowToPlanning(planningId, flowId, dbUser);
+    await this.createFlowTasks(flowId, planning.date, planning.user.toString(), user, transaction);
+    return taskDAL.addFlowToPlanning(planningId, flowId, dbUser, transaction);
   },
 
-  async removeFlowFromPlanning(planningId, flowId, user) {
+  async removeFlowFromPlanning(planningId, flowId, user, transaction = null) {
     const dbUser = await UserService.getUser(user.id);
     await perform(validate.userExists(dbUser));
-    const planning = await taskDAL.getTaskPlanningItem(planningId);
+    const planning = await taskDAL.getTaskPlanningItem(planningId, transaction);
     if (!planning) throw new Error('Planning was not found');
-    await this.removeFlowTasks(flowId, planning.date, planning.user, dbUser);
-    return taskDAL.removeFlowFromPlanning(planningId, flowId, dbUser);
+    await this.removeFlowTasks(flowId, planning.date, planning.user, dbUser, transaction);
+    return taskDAL.removeFlowFromPlanning(planningId, flowId, dbUser, transaction);
+  },
+
+  async regenerateFlow(flowId, user, transaction = null) {
+    // Get all existing plannings where this flows exists
+    const plannings = await this.getTaskPlanningItemsOfFlow(flowId, user, transaction);
+    const calls = plannings.map(async (planning) => {
+      return this.removeFlowFromPlanning(planning.id, flowId, user, transaction);
+    });
+    await Promise.all(calls);
+    const added = plannings.map(async (planning) => {
+      return this.addFlowToPlanning(planning.id, flowId, user, transaction);
+    });
+    return Promise.all(added);
   },
 
   async updateTask(id, data, user, transaction = null) {
@@ -219,8 +236,8 @@ const TaskService = {
    * @param {String} flowId 
    * @param {Date} date 
    */
-  async getTaskRulesByFlow(flowId, date = null) {
-    return taskDAL.getTaskRulesByFlow(flowId, date);
+  async getTaskRulesByFlow(flowId, date = null, transaction = null) {
+    return taskDAL.getTaskRulesByFlow(flowId, date, transaction);
   },
 
   async createTaskRule(data, user) {
@@ -240,8 +257,9 @@ const TaskService = {
 
   async updateTaskRule(ruleId, data, user) {
     const transaction = await createTransaction();
+    const userDb = await UserService.getUser(user.id);
     return transaction.execute(async () => {
-      let rule = await this.getTaskRule(ruleId, user);
+      let rule = await this.getTaskRule(ruleId);
       const validations = and([
         validate.userAuthorized(
           user,
@@ -256,7 +274,7 @@ const TaskService = {
       // 1st phase, generate more tasks or delete the unnecessary ones
       if (data.validFrom || data.validTo) {
         if (data.validFrom && rule.validFrom > new Date(data.validFrom)) {
-          await taskDAL.createTasks(await this.generateTasksBetween(rule, new Date(data.validFrom), rule.validFrom, user), transaction)
+          await taskDAL.createTasks(await this.generateTasksBetween(rule, new Date(data.validFrom), DateTime.fromJSDate(rule.validFrom).startOf('day'), user), transaction)
         }
         // if i insert valid from, delete all rules that are unmodified before that date
         if (data.validFrom && rule.validFrom < new Date(data.validFrom)) {
@@ -267,23 +285,57 @@ const TaskService = {
           // if rule was generated beyond new validTo, update it to the validTo date
           // Because we just deleted all the tasks from it onwards
           if (new Date(rule.generatedUntil) > new Date(data.validTo)) {
-            rule = await taskDAL.updateTaskRule(rule.id, { generatedUntil: data.validTo }, transaction);
+            rule = await taskDAL.updateTaskRule(rule.id, { generatedUntil: DateTime.fromISO(data.validTo).startOf('day').toJSDate() }, transaction);
           }
         }
       }
-      // 2nd phase, if i update the title, description or background
+      // 2nd phase, if i update the title, duration, description or background
       // i just update all unmodified tasks
-      if (data.title || data.description || typeof data.isBackgroundTask === 'boolean') {
+      if (data.title || data.taskDuration || data.description || typeof data.isBackgroundTask === 'boolean') {
         const update = {};
         if (data.title) update.title = data.title;
+        if (data.taskDuration) update.duration = data.taskDuration;
         if (data.description) update.description = data.description;
         if (typeof data.isBackgroundTask === 'boolean') update.isBackgroundTask = data.isBackgroundTask;
         await taskDAL.updateTasksOfRule(rule.id, {}, update, transaction);
       }
-      // phase 3, if i update expectedStartTime or duration
-      if (data.taskStartTime || data.taskDuration) {
-        await taskDAL.deleteTasksOfRule(rule.id, {}, DateTime.now().startOf('day').toJSDate(), null, transaction);
-        rule = await taskDAL.updateTaskRule(rule.id, { generatedUntil: new Date() }, transaction);
+      // phase 3, if i update expectedStartTime
+      if (data.taskStartTime) {
+        // await taskDAL.deleteTasksOfRule(rule.id, { flowId: null }, DateTime.now().startOf('day').toJSDate(), null, transaction);
+        // rule = await taskDAL.updateTaskRule(rule.id, { generatedUntil: new Date() }, transaction);
+        const dt = DateTime.fromISO(data.taskStartTime);
+        const [updateH, updateM] = [dt.hour, dt.minute];
+        await taskDAL.updateTasksOfRuleCb(rule.id, {}, async (t, trans) => {
+          const task = t;
+          task.expectedStartDate = DateTime.fromJSDate(t.expectedStartDate).toUTC().set({
+            hour: updateH,
+            minute: updateM,
+          });
+          return task.save({ session: trans });
+        });
+      }
+      // phase 4, assigned users updated
+      if (data.users) {
+        const updatedRule = await taskDAL.updateTaskRule(rule.id, {
+          users: data.users,
+        }, transaction);
+        const dateFrom = DateTime.utc().startOf('day').toJSDate();
+        taskDAL.deleteTasksOfRule(updatedRule.id, {}, dateFrom, null, transaction);
+        const tasks = await this.generateTasksBetween(updatedRule, dateFrom, rule.generatedUntil, userDb, transaction);
+        await taskDAL.createTasks(tasks, transaction);
+      }
+      // Step 5, i update one of the flows
+      if (data.flows) {
+        const oldFlows = rule.flows.map((f) => f.id);
+        const removedFlows = oldFlows.filter((f) => data.flows.indexOf(f) === -1);
+        const addedFlows = data.flows.filter((f) => oldFlows.indexOf(f) === -1);
+        // Update rule with new flows
+        await taskDAL.updateTaskRule(rule.id, {
+          flows: data.flows,
+        }, transaction);
+        const updates = removedFlows.concat(addedFlows).map(async (flow) => this.regenerateFlow(flow, userDb, transaction));
+        // Wait for updates to finish
+        await Promise.all(updates);
       }
       return taskDAL.updateTaskRule(ruleId, {
         ...data,
@@ -308,13 +360,21 @@ const TaskService = {
       for (let i = DateTime.fromJSDate(dateFrom); i < dateTo; i = i.plus({ day: 1 })) {
         dates.push(i.toJSDate());
       }
+      // Get all tasks that are already generated, do not generate them twice
+      const generatedTasks = await this.getTasksMapOfRuleBetweenDates(rule, dateFrom, dateTo, user, transaction);
       const tasks = await Promise.all(dates.map((date) => {
         const valid = this.validateRule(rule, date);
         if (valid) {
           if (rule.isSharedTask) {
             return this.generateSharedTask(rule, date, user, transaction);
           }
-          return rule.users.map((u) => new Task({ rule, date, assignedTo: [u], user}))
+          return rule.users.map((u) => {
+            // Check if task was already generated
+            if (generatedTasks.has(u.toString()) && generatedTasks.get(u.toString()).has(date.toLocaleDateString())) {
+              return null;
+            }
+            return new Task({ rule, date, assignedTo: [u], user})
+          })
         }
         return null;
       }));
@@ -322,6 +382,35 @@ const TaskService = {
       return tasks.flat().filter((t) => t !== null);
     } 
     return null;
+  },
+
+
+  /**
+   * Internal usage, get all tasks between dateFroma and DateTo
+   * Returns a Map with user id's as key, and a Set as value
+   * Set contains Date strings (date only, without time)
+   * @param {Object} rule Rule object
+   * @param {Date} dateFrom Date from
+   * @param {Date} dateTo date to, exclusive
+   */
+  async getTasksMapOfRuleBetweenDates(rule, dateFrom, dateTo, user, transaction = null) {
+    if (!rule || !rule.id) throw Error('Rule not valid');
+    if (!(dateFrom instanceof Date)) throw new Error('Date from is not valid');
+    if (!(dateTo instanceof Date)) throw new Error('Date from is not valid');
+    if (!user?.organization?.id) throw new Error('User organization missing');
+    const tasks = await taskDAL.getTasks([], user, dateFrom, dateTo, { ruleId: rule.id }, transaction);
+    const result = new Map();
+    // For each task
+    tasks.forEach((task) => {
+      // for user of task
+      task.assignedTo.forEach((usr) => {
+        if (!result.has(usr.id)) {
+          result.set(usr.id, new Set());
+        }
+        result.get(usr.id).add(task.expectedStartDate.toLocaleDateString());
+      });
+    });
+    return result;
   },
 
   /**
@@ -370,9 +459,9 @@ const TaskService = {
         if (rule.validTo) {
           maxDate = DateTime.min(maxDate, DateTime.fromJSDate(rule.validTo), DateTime.now().plus({ year: 1 }));
         }
-        await taskDAL.updateTaskRule(rule.id, { generatedUntil: maxDate.toJSDate() }, transaction);
+        await taskDAL.updateTaskRule(rule.id, { generatedUntil: maxDate.startOf('day').toJSDate() }, transaction);
         const dateFrom = oldDate ?? rule.validFrom;
-        await taskDAL.createTasks(await this.generateTasksBetween(rule, dateFrom, maxDate.toJSDate(), user, transaction), transaction);
+        await taskDAL.createTasks(await this.generateTasksBetween(rule, dateFrom, maxDate.startOf('day').toJSDate(), user, transaction), transaction);
       }));
     });
   },
@@ -390,18 +479,18 @@ const TaskService = {
    * @param {String} assignedTo
    * @param {{id: String}} user 
    */
-  async generateFlowTask(flowId, rule, date, assignedTo, user) {
+  async generateFlowTask(flowId, rule, date, assignedTo, user, transaction = null) {
     if (rule.isSharedTask) {
       const task = (await taskDAL.getTasksOnDate(date, {
         ruleId: rule.id,
-      }))[0];
+      }, transaction))[0];
       if (task?.id) {
         const assignedSet = new Set(task.assignedTo.map((u) => u.id));
         assignedSet.add(String(assignedTo));
         await taskDAL.updateTask(task.id, {
           flowId,
           assignedTo: Array.from(assignedSet)
-        });
+        }, transaction);
         return null;
       }
     }
@@ -415,27 +504,31 @@ const TaskService = {
    * @param {String} assignedTo User id to which the flow was assigned
    * @param {{id: String}} user User who assigned the flow
    */
-  async createFlowTasks(flowId, date, assignedTo, user) {
+  async createFlowTasks(flowId, date, assignedTo, user, transaction = null) {
     // find all rules that are assigned to this flow and are valid on @date
     const dbUser = await UserService.getUser(user.id);
-    const rules = await this.getTaskRulesByFlow(flowId, date);
+    const rules = await this.getTaskRulesByFlow(flowId, date, transaction);
     const calls = rules.map(async (rule) => {
-      if (this.validateRule(rule, date)) {
+      const map = await this.getTasksMapOfRuleBetweenDates(
+        rule,
+        DateTime.fromJSDate(date).startOf('day').toJSDate(),
+        DateTime.fromJSDate(date).endOf('day').toJSDate(), dbUser, transaction);
+      if (this.validateRule(rule, date) && !map.get(assignedTo)?.has(date.toLocaleDateString())) {
         //  If rule is valid, generate a task for it, save it in array
-        return this.generateFlowTask(flowId, rule, date, assignedTo, dbUser);
+        return this.generateFlowTask(flowId, rule, date, assignedTo, dbUser, transaction);
       }
       return null;
     });
     // After all rules were processed, create all tasks saved into the array
     const tasks = (await Promise.all(calls)).filter((t) => Boolean(t));
-    await taskDAL.createTasks(tasks);
+    await taskDAL.createTasks(tasks, transaction);
   },
 
-  async removeFlowTask(task, assignedTo, user) {
-    const rule = await taskDAL.getTaskRule(task.ruleId);
+  async removeFlowTask(task, assignedTo, user, transaction = null) {
+    const rule = await taskDAL.getTaskRule(task.ruleId, transaction);
     if (!rule) throw new Error('Task doesn\'t have a rule');
     // if a task is not shared, delete it 
-    if (!rule.isSharedTask) return taskDAL.deleteTask(task.id);
+    if (!rule.isSharedTask) return taskDAL.deleteTask(task.id, transaction);
     const ruleUsers = new Set(rule.users.map((u) => u.id));
     // if a task is shared, and user is not in the rule.users, remove the user from assignedTo 
     if (!ruleUsers.has(assignedTo)) {
@@ -444,7 +537,7 @@ const TaskService = {
         .filter((id) => String(id) !== String(assignedTo));
       return this.updateTask(task.id, {
         assignedTo: updatedAssignedTo,
-      }, user);
+      }, user, transaction);
     }
     // if task is shared, but user is in rule.users, do nothing, we don't need to remove that task
     return null;
@@ -456,13 +549,13 @@ const TaskService = {
    * @param {String} assignedTo User from which the flow was removed
    * @param {Object} user User who removed the flow
    */
-  async removeFlowTasks(flowId, date, assignedTo, user) {
+  async removeFlowTasks(flowId, date, assignedTo, user, transaction = null) {
     // find all tasks on date, related to flow
-    const tasks = await taskDAL.getTasksOnDate(date, { flowId, status: constants.tasks.status.New });
+    const tasks = await taskDAL.getTasksOnDate(date, { flowId, status: constants.tasks.status.New }, transaction);
     // for each task
     // call removeFlowTask on it
     const calls = tasks.map(async (task) => {
-      return this.removeFlowTask(task, assignedTo, user);
+      return this.removeFlowTask(task, assignedTo, user, transaction);
     });
     return Promise.all(calls);
   },
@@ -481,7 +574,7 @@ const TaskService = {
     // if date is not valid, return false
     if (Number.isNaN(+date)) return false;
     // if date is farther than a year from now, return false
-    if (DateTime.now().plus({ year: 1 }) < date) return false;
+    if (DateTime.utc().startOf('day').plus({ year: 1 }) < date) return false;
     switch (type) {
       case types.Daily:
         return this.dailyValidate(rule, date);

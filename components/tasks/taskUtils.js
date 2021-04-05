@@ -47,6 +47,8 @@ const taskRuleSchema = Joi.object({
   zone: Joi.string(),
   organizationId: Joi.string(),
   createdUser: Joi.string(),
+}).xor('users', 'flows').messages({
+  'object.xor': 'You can assign a rule to either users or flows, but now both',
 });
 
 const taskStatusUpdateSchema = Joi.object({

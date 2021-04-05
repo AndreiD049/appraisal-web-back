@@ -9,7 +9,7 @@ const taskDAL = {
   /**
    * Region Tasks
    */
-  async getTasks(assignedTo, user, from, to = null) {
+  async getTasks(assignedTo, user, from, to = null, additional = null, transaction = null) {
     const startDate = { $gte: from };
     if (to !== null) {
       startDate.$lte = to;
@@ -19,10 +19,13 @@ const taskDAL = {
         { expectedStartDate: startDate },
         { actualStartDate: startDate }
       ],
-      assignedTo: {$in: assignedTo},
       organizationId: user?.organization?.id,
+      ...additional,
     };
-    return TaskModel.find(query).populate({ path: 'assignedTo', select: 'username' });
+    if (assignedTo.length > 0) {
+      query.assignedTo = { $in: assignedTo };
+    }
+    return TaskModel.find(query).session(transaction).populate({ path: 'assignedTo', select: 'username' });
   },
 
   async getTasksByStatus(status, options = null) {
@@ -45,7 +48,7 @@ const taskDAL = {
     }).populate({ path: 'assignedTo', select: 'username' });
   },
 
-  async getTasksOnDate(date, options) {
+  async getTasksOnDate(date, options, transaction = null) {
     const dtStart = DateTime.fromJSDate(date).startOf('day');
     const dtEnd = DateTime.fromJSDate(date).endOf('day');
     const query = {
@@ -55,7 +58,7 @@ const taskDAL = {
         { expectedStartDate: { $lte: dtEnd.toJSDate() } }
       ]
     };
-    return TaskModel.find(query).populate({ path: 'assignedTo', select: 'username' });
+    return TaskModel.find(query).session(transaction).populate({ path: 'assignedTo', select: 'username' });
   },
 
   async getTask(id) {
@@ -87,6 +90,17 @@ const taskDAL = {
     }, data, { new: true, session: transaction });
   },
 
+  async updateTasksOfRuleCb(ruleId, query, cb, transaction = null) {
+    const tasks = await TaskModel.find({
+      ruleId,
+      modifiedUser: null,
+      ...query,
+    });
+    const calls = tasks.map(async (task) => cb(task, transaction));
+    const result = await Promise.all(calls);
+    return result;
+  },
+
   async deleteTasksOfRule(ruleId, query, dateFrom = null, dateTo = null, transaction = null) {
     const dateQuery = {
       expectedStartDate: {
@@ -107,8 +121,8 @@ const taskDAL = {
     }, { session: transaction });
   },
 
-  async deleteTask(id) {
-    return TaskModel.findByIdAndDelete(id);
+  async deleteTask(id, transaction = null) {
+    return TaskModel.findByIdAndDelete(id).session(transaction);
   },
 
   /**
@@ -125,7 +139,7 @@ const taskDAL = {
     return TaskRuleModel.find(query).populate({ path: 'users flows', select: 'username color name' });
   },
 
-  async getTaskRulesByFlow(flowId, date = null) {
+  async getTaskRulesByFlow(flowId, date = null, transaction = null) {
     const query = {
       flows: flowId,
     };
@@ -137,11 +151,11 @@ const taskDAL = {
         { validTo: { $gt: dtEnd } },
       ];
     }
-    return TaskRuleModel.find(query);
+    return TaskRuleModel.find(query).session(transaction);
   },
 
-  async getTaskRule(id) {
-    return TaskRuleModel.findById(id).populate({ path: 'users createdUser flows', select: 'username color name' });
+  async getTaskRule(id, transaction = null) {
+    return TaskRuleModel.findById(id).session(transaction).populate({ path: 'users createdUser flows', select: 'username color name' });
   },
 
   async createTaskRule(data, transaction = null) {
@@ -221,8 +235,8 @@ const taskDAL = {
    * Region Task Planning
    */
 
-  async getTaskPlanningItem(id) {
-    return TaskPlanningModel.findById(id);
+  async getTaskPlanningItem(id, transaction = null) {
+    return TaskPlanningModel.findById(id).session(transaction);
   },
 
   async getTaskPlanningItems(dateFrom, dateTo, users) {
@@ -233,6 +247,14 @@ const taskDAL = {
       },
       user: {$in: users},
     })
+      .populate('flows user', 'name color username');
+  },
+
+  async getTaskPlanningItemsByFlow(flowId, user, transaction = null) {
+    return TaskPlanningModel.find({
+      flows: flowId,
+      organizationId: user.organization?.id,
+    }).session(transaction)
       .populate('flows user', 'name color username');
   },
 
@@ -249,29 +271,29 @@ const taskDAL = {
     });
   },
 
-  async addFlowToPlanning(planningId, flowId, user) {
-    const planning = await TaskPlanningModel.findById(planningId);
+  async addFlowToPlanning(planningId, flowId, user, transaction = null) {
+    const planning = await TaskPlanningModel.findById(planningId).session(transaction);
     if (!planning) throw new Error('Planning not found', planningId);
     if (planning.flows.map((f) => String(f)).indexOf(String(flowId)) !== -1)
       throw new Error('Flow is already assigned');
     return TaskPlanningModel.findByIdAndUpdate(planningId, {
       flows: planning.flows.concat(flowId),
       modifiedUser: user.id,
-    }, { new: true }) .populate({
+    }, { new: true, session: transaction }).populate({
      path: 'flows user',
      select: 'name color username',
     });
   },
 
-  async removeFlowFromPlanning(planningId, flowId, user) {
-    const planning = await TaskPlanningModel.findById(planningId);
+  async removeFlowFromPlanning(planningId, flowId, user, transaction = null) {
+    const planning = await TaskPlanningModel.findById(planningId).session(transaction);
     if (!planning) throw new Error('Planning not found', planningId);
     if (!planning.flows.find((f) => String(f) === flowId))
       throw new Error('Flow was not found');
     return TaskPlanningModel.findByIdAndUpdate(planningId, {
       flows: planning.flows.filter((f) => String(f) !== flowId),
       modifiedUser: user.id,
-    }, { new: true }).populate({
+    }, { new: true, session: transaction }).populate({
      path: 'flows user',
      select: 'name color username',
     });
