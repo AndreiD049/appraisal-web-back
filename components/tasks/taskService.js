@@ -251,6 +251,11 @@ const TaskService = {
       }, transaction);
       // Extend the created rule for 1 month initially
       await this.extendRules(dbUser, [rule], DateTime.fromJSDate(rule.validFrom).plus({ month: 1}).toJSDate(), transaction);
+      // if rule had any flows, regenerate the planning
+      if (rule.flows?.length > 0) {
+        const calls = rule.flows.map((f) => this.regenerateFlow(f.id, dbUser, transaction));
+        await Promise.all(calls);
+      }
       return rule;
     });
   },

@@ -31,7 +31,6 @@ taskRuleRouter.get('/:id', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.read), 
 
 taskRuleRouter.post('/', AuthorizeReq(TASK_RULE.code, TASK_RULE.grants.create), async (req, res, next) => {
   try {
-    console.log(req.body);
     await taskRuleSchema.validateAsync(req.body);
     const data = req.body;
     const result = await TaskService.createTaskRule(data, req.user);
