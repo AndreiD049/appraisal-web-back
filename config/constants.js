@@ -4,6 +4,7 @@ const constants = {
       INSERT: 'INSERT',
       UPDATE: 'UPDATE',
       DELETE: 'DELETE',
+      RELOAD: 'RELOAD',
     },
     topics: {
       notifications: 'notifications',

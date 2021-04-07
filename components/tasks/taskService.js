@@ -14,13 +14,9 @@ const {TASK} = constants.securities;
 const TaskService = {
   async getDailyTasks(fromDate, toDate, users, user) {
     const dbUser = await UserService.getUser(user.id);
-    let toDateCalculated = DateTime.fromISO(toDate);
-    if (fromDate > toDate) {
-      toDateCalculated = toDateCalculated.plus({ day: 1 });
-    }
-    const rules = await taskDAL.getUngeneratedRules(users, toDateCalculated.toJSDate());
-    await this.extendRules(dbUser, rules, toDateCalculated.endOf('month').toJSDate());
-    return taskDAL.getTasks(users, dbUser, fromDate, toDateCalculated.toJSDate())
+    const rules = await taskDAL.getUngeneratedRules(users, toDate);
+    await this.extendRules(dbUser, rules, DateTime.fromISO(toDate).endOf('month').toJSDate());
+    return taskDAL.getTasks(users, dbUser, fromDate, toDate)
   },
 
   async getBusyTasks(user) {
@@ -68,11 +64,18 @@ const TaskService = {
 
   async createTask(data, user) {
     const dbUser = await UserService.getUser(user.id);
-    return taskDAL.createTask({
+    const result = await taskDAL.createTask({
       ...data,
       createdUser: user.id,
       organizationId: dbUser?.organization?.id,
     });
+    MessagePublisher.publish(constants.connections.topics.tasks, {
+      action: constants.connections.actions.INSERT,
+      targets: result.assignedTo.map((u) => u.id),
+      initiator: user.id,
+      data: result,
+    });
+    return result;
   },
 
   // Create a single task planning item, data is already validated
@@ -143,9 +146,10 @@ const TaskService = {
       ...data,
       modifiedUser: user.id,
     }, transaction);
+    // Notify everyone
     MessagePublisher.publish(constants.connections.topics.tasks, {
       action: constants.connections.actions.UPDATE,
-      target: user.id,
+      targets: result.assignedTo.map((u) => u.id),
       initiator: user.id,
       data: result,
     });
@@ -342,10 +346,12 @@ const TaskService = {
         // Wait for updates to finish
         await Promise.all(updates);
       }
-      return taskDAL.updateTaskRule(ruleId, {
+      const result = await taskDAL.updateTaskRule(ruleId, {
         ...data,
         modifiedUser: user.id,
       }, transaction);
+      await this.notifyRuleChange(result);
+      return result;
     });
   },
 
@@ -467,6 +473,10 @@ const TaskService = {
         await taskDAL.updateTaskRule(rule.id, { generatedUntil: maxDate.startOf('day').toJSDate() }, transaction);
         const dateFrom = oldDate ?? rule.validFrom;
         await taskDAL.createTasks(await this.generateTasksBetween(rule, dateFrom, maxDate.startOf('day').toJSDate(), user, transaction), transaction);
+        MessagePublisher.publish(constants.connections.topics.tasks, {
+          action: constants.connections.actions.RELOAD,
+          targets: rule.users.map((u) => u.id),
+        })
       }));
     });
   },
@@ -612,6 +622,20 @@ const TaskService = {
     return false;
   },
 
+  /**
+   * Notify all interested users that rule has changed
+   * @param {Object} rule 
+   */
+  async notifyRuleChange(rule) {
+    if (rule.users) {
+      MessagePublisher.publish(constants.connections.topics.tasks, {
+        action: constants.connections.actions.RELOAD,
+        targets: rule.users.map((u) => u.id),
+      });
+    } else if (rule.flows) {
+      // TODO: get all users with those flows in planning of current week and notify them
+    }
+  },
 };
 
 module.exports = TaskService; 

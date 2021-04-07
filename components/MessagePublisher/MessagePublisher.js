@@ -12,7 +12,8 @@ class MessagePublisher {
 
   publish(topic, data) {
     Joi.object({
-      target: Joi.string().required(),
+      action: Joi.string(),
+      targets: Joi.array().items(Joi.string()).required(),
     }).validate(data);
     this.publisher.emit(topic, data);
   }
