@@ -2812,7 +2812,7 @@ describe('Appraisal service tests', () => {
 
   it('Should successfully finish a big amount of items (20000)', async () => {
     expect.assertions(2);
-    jest.setTimeout(20000);
+    jest.setTimeout(40000);
     const period = await createPeriod('Duplicate', organizations[0].id, users[0].id, 'Active');
     expect(period).toBeTruthy();
     // 10 000 Achieved items
