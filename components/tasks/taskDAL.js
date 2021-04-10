@@ -3,6 +3,7 @@ const { TaskModel } = require('../../models/Tasks/TaskModel');
 const { TaskRuleModel } = require('../../models/Tasks/TaskRuleModel');
 const { TaskFlowModel } = require('../../models/Tasks/TaskFlowModel');
 const { TaskPlanningModel } = require('../../models/Tasks');
+const {status} = require('../../config').constants.tasks;
 
 const taskDAL = {
 
@@ -17,7 +18,15 @@ const taskDAL = {
     const query = {
       $or: [
         { expectedStartDate: startDate },
-        { actualStartDate: startDate }
+        { actualStartDate: startDate },
+        {
+          expectedStartDate: { $lt: from },
+          status: { $in: [status.New, status.InProgress, status.Paused] }
+        },
+        {
+          actualStartDate: { $lt: from },
+          status: { $in: [status.New, status.InProgress, status.Paused] }
+        }
       ],
       organizationId: user?.organization?.id,
       ...additional,
