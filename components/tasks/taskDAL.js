@@ -19,18 +19,24 @@ const taskDAL = {
       $or: [
         { expectedStartDate: startDate },
         { actualStartDate: startDate },
-        {
-          expectedStartDate: { $lt: from },
-          status: { $in: [status.New, status.InProgress, status.Paused] }
-        },
-        {
-          actualStartDate: { $lt: from },
-          status: { $in: [status.New, status.InProgress, status.Paused] }
-        }
       ],
       organizationId: user?.organization?.id,
       ...additional,
     };
+    if (DateTime.fromISO(from).hasSame(DateTime.local(), 'day')) {
+      query.$or.push(
+        {
+          expectedStartDate: { $lt: from },
+          status: { $in: [status.New, status.InProgress, status.Paused] }
+        }
+      );
+      query.$or.push(
+        {
+          actualStartDate: { $lt: from },
+          status: { $in: [status.New, status.InProgress, status.Paused] }
+        }
+      )
+    }
     if (assignedTo.length > 0) {
       query.assignedTo = { $in: assignedTo };
     }
