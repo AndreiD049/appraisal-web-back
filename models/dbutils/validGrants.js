@@ -9,6 +9,7 @@ const validGrants = [
   'delete-finished',
   'finish',
   'update',
+  'update-other',
   'delete',
   'cancel',
   'general',
